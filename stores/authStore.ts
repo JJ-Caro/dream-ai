@@ -1,0 +1,98 @@
+import { create } from 'zustand';
+import { supabase } from '@/lib/supabase';
+import type { User, Session } from '@supabase/supabase-js';
+
+interface AuthState {
+  user: User | null;
+  session: Session | null;
+  isLoading: boolean;
+  isInitialized: boolean;
+
+  initialize: () => Promise<void>;
+  signInAnonymously: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  session: null,
+  isLoading: false,
+  isInitialized: false,
+
+  initialize: async () => {
+    try {
+      // Get current session
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        set({ user: session.user, session, isInitialized: true });
+      } else {
+        set({ isInitialized: true });
+      }
+
+      // Listen for auth changes
+      supabase.auth.onAuthStateChange((_event, session) => {
+        set({ user: session?.user ?? null, session });
+      });
+    } catch (error) {
+      console.error('Failed to initialize auth:', error);
+      set({ isInitialized: true });
+    }
+  },
+
+  signInAnonymously: async () => {
+    set({ isLoading: true });
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+
+      // Create profile for new user
+      if (data.user) {
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          onboarding_completed: false,
+        });
+      }
+
+      set({ user: data.user, session: data.session });
+    } catch (error) {
+      console.error('Failed to sign in anonymously:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signInWithEmail: async (email: string) => {
+    set({ isLoading: true });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true,
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to send magic link:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signOut: async () => {
+    set({ isLoading: true });
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      set({ user: null, session: null });
+    } catch (error) {
+      console.error('Failed to sign out:', error);
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+}));
