@@ -4,13 +4,17 @@ import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/authStore';
+import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/colors';
 import { reregisterReminderIfNeeded } from '@/lib/notifications';
+import { logError, logDebug } from '@/lib/errorLogger';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -33,6 +37,86 @@ const DreamTheme = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+// Loading screen component
+function LoadingScreen() {
+  return (
+    <View style={loadingStyles.container}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={loadingStyles.text}>Loading...</Text>
+    </View>
+  );
+}
+
+const loadingStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: {
+    marginTop: 16,
+    color: colors.textSecondary,
+    fontSize: 16,
+  },
+});
+
+// Handle deep links for auth callbacks
+function useDeepLinkHandler() {
+  useEffect(() => {
+    // Handle initial URL (app opened from link)
+    const handleInitialURL = async () => {
+      const initialUrl = await Linking.getInitialURL();
+      if (initialUrl) {
+        handleAuthCallback(initialUrl);
+      }
+    };
+
+    // Handle URL when app is already open
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleAuthCallback(event.url);
+    });
+
+    handleInitialURL();
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+}
+
+// Process auth callback URL
+async function handleAuthCallback(url: string) {
+  try {
+    logDebug('handleAuthCallback', 'Processing URL', url);
+
+    // Check if this is an auth callback
+    if (url.includes('auth/callback') || url.includes('access_token') || url.includes('refresh_token')) {
+      // Extract tokens from URL fragment
+      const hashParams = url.split('#')[1];
+      if (hashParams && supabase) {
+        const params = new URLSearchParams(hashParams);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          logDebug('handleAuthCallback', 'Setting session from magic link');
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            logError('handleAuthCallback', error);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    logError('handleAuthCallback', error);
+  }
+}
 
 function useProtectedRoute(user: any, isInitialized: boolean) {
   const segments = useSegments();
@@ -66,6 +150,9 @@ export default function RootLayout() {
     ...FontAwesome.font,
   });
 
+  // Handle deep links for magic link auth
+  useDeepLinkHandler();
+
   useEffect(() => {
     initialize();
     reregisterReminderIfNeeded();
@@ -83,8 +170,9 @@ export default function RootLayout() {
 
   useProtectedRoute(user, isInitialized);
 
+  // Show loading screen while initializing
   if (!fontsLoaded || !isInitialized) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (

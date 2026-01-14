@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import * as Linking from 'expo-linking';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -72,10 +73,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!supabase) throw new Error('Supabase not configured');
     set({ isLoading: true });
     try {
+      // Get the redirect URL for the magic link
+      const redirectUrl = Linking.createURL('auth/callback');
+
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: true,
+          emailRedirectTo: redirectUrl,
         },
       });
       if (error) throw error;
