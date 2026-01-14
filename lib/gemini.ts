@@ -91,19 +91,80 @@ export async function chatAboutDreams(
 ): Promise<string> {
   const dreams = Array.isArray(dreamContext) ? dreamContext : [dreamContext];
 
-  // Build context from dreams
+  // Build rich context from dreams including all extracted data
   const dreamContextText = dreams.map((dream, i) => {
-    return `Dream ${i + 1} (${new Date(dream.recorded_at).toLocaleDateString()}):
+    // Build figures section with archetype hints
+    const figuresSection = dream.figures.length > 0
+      ? dream.figures.map(f => {
+          let figureDesc = `• ${f.description} (${f.gender}, ${f.emotional_valence})`;
+          if (f.relationship) figureDesc += ` - resembles: ${f.relationship}`;
+          if (f.archetype_hint) figureDesc += ` [archetype hint: ${f.archetype_hint}]`;
+          return figureDesc;
+        }).join('\n')
+      : 'None noted';
+
+    // Build locations section
+    const locationsSection = dream.locations.length > 0
+      ? dream.locations.map(l => `• ${l.description} (${l.familiarity}, atmosphere: ${l.atmosphere})`).join('\n')
+      : 'None noted';
+
+    // Build symbols section with possible meanings
+    const symbolsSection = dream.symbols && dream.symbols.length > 0
+      ? dream.symbols.map(s => `• ${s.symbol}: ${s.context}${s.possible_meanings?.length ? ` [possible meanings: ${s.possible_meanings.join(', ')}]` : ''}`).join('\n')
+      : 'None noted';
+
+    // Build emotions section
+    const emotionsSection = dream.emotions.length > 0
+      ? dream.emotions.map(e => `• ${e.emotion} (intensity ${e.intensity}/5) - ${e.moment}`).join('\n')
+      : 'None noted';
+
+    // Quick archetype section
+    const quickArchetypeSection = dream.quick_archetype
+      ? `${dream.quick_archetype.likely_archetype.toUpperCase()} (${Math.round(dream.quick_archetype.confidence * 100)}% confidence)\nReason: ${dream.quick_archetype.brief_reason}`
+      : 'Not yet analyzed';
+
+    // Deep analysis section if available
+    let deepAnalysisSection = '';
+    if (dream.deep_analysis) {
+      const da = dream.deep_analysis;
+      deepAnalysisSection = `
+
+DEEP JUNGIAN ANALYSIS (use this for your responses):
+• Primary Archetype: ${da.primary_archetype?.type?.toUpperCase() || 'Unknown'} (${Math.round((da.primary_archetype?.confidence || 0) * 100)}% confidence)
+• Evidence: ${da.primary_archetype?.evidence?.join('; ') || 'Not available'}
+• Psychological Meaning: ${da.primary_archetype?.psychological_meaning || 'Not available'}
+• Compensatory Dynamic: ${da.compensatory_dynamic || 'Not analyzed'}
+• Synthesis Interpretation: ${da.synthesis || 'Not available'}
+• Symbol Amplifications:
+${da.amplifications?.map(a => `  - ${a.symbol}: ${a.mythological}`).join('\n') || '  None available'}
+• Reflection Questions: ${da.questions_for_reflection?.join(' | ') || 'None generated'}`;
+    }
+
+    return `═══════════════════════════════════════
+DREAM ${i + 1} (${new Date(dream.recorded_at).toLocaleDateString()})
+═══════════════════════════════════════
+
+NARRATIVE:
 ${dream.cleaned_narrative}
 
-Key elements:
-- Figures: ${dream.figures.map(f => f.description).join(', ') || 'None noted'}
-- Locations: ${dream.locations.map(l => l.description).join(', ') || 'None noted'}
-- Emotions: ${dream.emotions.map(e => `${e.emotion} (intensity ${e.intensity})`).join(', ') || 'None noted'}
-- Themes: ${dream.themes.join(', ') || 'None noted'}
-- Overall tone: ${dream.overall_emotional_tone}
-`;
-  }).join('\n---\n');
+FIGURES:
+${figuresSection}
+
+LOCATIONS:
+${locationsSection}
+
+SYMBOLS:
+${symbolsSection}
+
+EMOTIONS:
+${emotionsSection}
+
+THEMES: ${dream.themes.join(', ') || 'None noted'}
+OVERALL EMOTIONAL TONE: ${dream.overall_emotional_tone}
+
+INITIAL ARCHETYPE ASSESSMENT:
+${quickArchetypeSection}${deepAnalysisSection}`;
+  }).join('\n\n');
 
   // Build conversation history
   const conversationHistory = messages.map(m =>
@@ -112,22 +173,25 @@ Key elements:
 
   // Build prompt with optional user context
   const userContextSection = userContext && userContext.trim()
-    ? `\nCONTEXT ABOUT THE DREAMER (use this to better understand their dreams and ask more relevant questions):
+    ? `
+═══════════════════════════════════════
+PERSONAL CONTEXT ABOUT THE DREAMER
+═══════════════════════════════════════
 ${userContext}
 
----\n`
+`
     : '';
 
   const prompt = `${CHAT_SYSTEM_PROMPT}
 ${userContextSection}
-Here are the dreams we're discussing:
-
 ${dreamContextText}
 
-Conversation so far:
+═══════════════════════════════════════
+CONVERSATION
+═══════════════════════════════════════
 ${conversationHistory}
 
-Respond to the user's last message. Remember to be curious, warm, and never interpret meaning.`;
+Respond to the user's last message. Provide substantive Jungian analysis when asked about meaning. Reference specific dream elements (figures, symbols, emotions, archetypes) in your interpretation. Be insightful and give real value.`;
 
   const result = await flashModel.generateContent(prompt);
   return result.response.text();
