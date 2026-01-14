@@ -2,9 +2,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import OpenAI from 'openai';
 
-// Debug: Check if API key is loaded
 const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-console.log('OpenAI API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT FOUND');
 
 const openai = new OpenAI({
   apiKey: apiKey,
@@ -26,9 +24,7 @@ export async function initializeSpeech(): Promise<void> {
       staysActiveInBackground: false,
       shouldDuckAndroid: true,
     });
-    console.log('OpenAI TTS initialized with voice:', PRIMARY_VOICE);
   } catch (error) {
-    console.error('Failed to initialize speech:', error);
   }
 }
 
@@ -80,8 +76,6 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
       }
     });
   } catch (error) {
-    console.error('OpenAI TTS failed, trying fallback:', error);
-
     // Try fallback voice
     try {
       const mp3Response = await openai.audio.speech.create({
@@ -113,7 +107,6 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
         }
       });
     } catch (fallbackError) {
-      console.error('Fallback TTS also failed:', fallbackError);
       isSpeaking = false;
       options?.onError?.(fallbackError as Error);
     }

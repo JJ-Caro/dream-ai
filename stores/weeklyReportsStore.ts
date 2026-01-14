@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { generateWeeklyReportInsight, aggregateJungianAnalysis } from '@/lib/gemini';
 import type { Dream, WeeklyReport, WeeklyReportInsert } from '@/types/dream';
 
@@ -47,6 +47,10 @@ export const useWeeklyReportsStore = create<WeeklyReportsState>((set, get) => ({
   lastCheckedWeek: null,
 
   fetchReports: async () => {
+    if (!supabase) {
+      set({ isLoading: false, error: 'Database not configured' });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -57,7 +61,6 @@ export const useWeeklyReportsStore = create<WeeklyReportsState>((set, get) => ({
       if (error) throw error;
       set({ reports: (data as WeeklyReport[]) || [] });
     } catch (error) {
-      console.error('Failed to fetch weekly reports:', error);
       set({ error: 'Failed to load reports' });
     } finally {
       set({ isLoading: false });
@@ -96,6 +99,10 @@ export const useWeeklyReportsStore = create<WeeklyReportsState>((set, get) => ({
     if (weekDreams.length === 0) return;
 
     // Generate report
+    if (!supabase) {
+      set({ error: 'Database not configured' });
+      return;
+    }
     set({ isGenerating: true, error: null });
 
     try {
@@ -163,7 +170,6 @@ export const useWeeklyReportsStore = create<WeeklyReportsState>((set, get) => ({
         reports: [newReport, ...state.reports],
       }));
     } catch (error) {
-      console.error('Failed to generate weekly report:', error);
       set({ error: 'Failed to generate weekly report' });
     } finally {
       set({ isGenerating: false });

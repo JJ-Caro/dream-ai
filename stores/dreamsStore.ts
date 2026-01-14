@@ -40,7 +40,6 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
       if (error) throw error;
       set({ dreams: data as Dream[] });
     } catch (error) {
-      console.error('Failed to fetch dreams:', error);
       set({ error: 'Failed to load dreams' });
     } finally {
       set({ isLoading: false });
@@ -118,7 +117,6 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
 
       return newDream;
     } catch (error) {
-      console.error('Failed to process dream:', error);
       set({ error: 'Failed to process dream. It will be synced when online.' });
       throw error;
     } finally {
@@ -140,7 +138,6 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
         dreams: state.dreams.filter(d => d.id !== id),
       }));
     } catch (error) {
-      console.error('Failed to delete dream:', error);
       throw error;
     }
   },
@@ -153,7 +150,6 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
       try {
         await get().processDream(dream.audioUri, dream.durationSeconds);
       } catch (error) {
-        console.error('Failed to sync pending dream:', dream.id, error);
       }
     }
   },

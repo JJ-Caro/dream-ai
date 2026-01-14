@@ -60,7 +60,6 @@ ${DREAM_ANALYSIS_PROMPT}`;
   try {
     return JSON.parse(jsonStr) as GeminiDreamResponse;
   } catch (error) {
-    console.error('Failed to parse Gemini response:', text);
     throw new Error('Failed to parse dream analysis response');
   }
 }
@@ -151,7 +150,7 @@ export async function generateWeeklyReportInsight(
   const dreamsContext = dreams.map((dream, i) => {
     const jungianInfo = dream.jungian_analysis
       ? `Primary Archetype: ${dream.jungian_analysis.primary_archetype} (confidence: ${dream.jungian_analysis.confidence})
-Explanation: ${dream.jungian_analysis.explanation}
+Interpretation: ${dream.jungian_analysis.interpretation}
 Secondary Archetypes: ${dream.jungian_analysis.secondary_archetypes.join(', ') || 'None'}
 Shadow elements: ${dream.jungian_analysis.shadow_elements.join(', ') || 'None'}`
       : 'Jungian analysis: Not available';
@@ -188,7 +187,6 @@ ${dreamsContext}`;
   try {
     return JSON.parse(jsonStr) as WeeklyReportAIResponse;
   } catch (error) {
-    console.error('Failed to parse weekly report response:', text);
     // Return fallback response
     return {
       emotional_journey: {

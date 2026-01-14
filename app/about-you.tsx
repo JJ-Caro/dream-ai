@@ -261,7 +261,6 @@ export default function AboutYouScreen() {
         }
         reset();
       } catch (error) {
-        console.error('Voice input failed:', error);
         reset();
         setIsTranscribing(false);
       }
@@ -270,7 +269,6 @@ export default function AboutYouScreen() {
       try {
         await start();
       } catch (error) {
-        console.error('Failed to start recording:', error);
       }
     }
   };
@@ -286,7 +284,6 @@ export default function AboutYouScreen() {
         router.back();
       }, 1000);
     } catch (error) {
-      console.error('Failed to save context:', error);
     }
   };
 

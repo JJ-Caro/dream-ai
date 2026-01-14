@@ -381,7 +381,6 @@ export default function ChatScreen() {
         onError: () => setIsSpeaking(false),
       });
     } catch (error) {
-      console.error('Failed to speak:', error);
       setIsSpeaking(false);
     }
   };
@@ -411,7 +410,6 @@ export default function ChatScreen() {
         }
         reset();
       } catch (error) {
-        console.error('Voice input failed:', error);
         reset();
         setIsTranscribing(false);
       }
@@ -421,7 +419,6 @@ export default function ChatScreen() {
       try {
         await start();
       } catch (error) {
-        console.error('Failed to start recording:', error);
       }
     }
   };

@@ -40,7 +40,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user: session?.user ?? null, session });
       });
     } catch (error) {
-      console.error('Failed to initialize auth:', error);
       set({ isInitialized: true });
     }
   },
@@ -61,7 +60,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       set({ user: data.user, session: data.session });
     } catch (error) {
-      console.error('Failed to sign in anonymously:', error);
       throw error;
     } finally {
       set({ isLoading: false });
@@ -80,7 +78,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       if (error) throw error;
     } catch (error) {
-      console.error('Failed to send magic link:', error);
       throw error;
     } finally {
       set({ isLoading: false });
@@ -95,7 +92,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (error) throw error;
       set({ user: null, session: null });
     } catch (error) {
-      console.error('Failed to sign out:', error);
       throw error;
     } finally {
       set({ isLoading: false });

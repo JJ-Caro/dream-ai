@@ -358,7 +358,6 @@ export default function DreamDetailScreen() {
         Alert.alert('Error', 'Failed to generate deep analysis. Please try again.');
       }
     } catch (error) {
-      console.error('Failed to generate deep analysis:', error);
       haptic.error();
       Alert.alert('Error', 'Failed to generate deep analysis. Please try again.');
     } finally {

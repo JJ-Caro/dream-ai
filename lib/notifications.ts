@@ -12,6 +12,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -26,7 +28,6 @@ export interface ReminderSettings {
  */
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-    console.log('Notifications require a physical device');
     return false;
   }
 
@@ -39,7 +40,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Notification permissions not granted');
     return false;
   }
 
@@ -73,10 +73,8 @@ export async function scheduleDreamReminder(hour: number, minute: number): Promi
     await AsyncStorage.setItem(REMINDER_STORAGE_KEY, JSON.stringify(settings));
     await AsyncStorage.setItem(NOTIFICATION_ID_KEY, notificationId);
 
-    console.log(`Dream reminder scheduled for ${hour}:${minute.toString().padStart(2, '0')}`);
     return notificationId;
   } catch (error) {
-    console.error('Failed to schedule dream reminder:', error);
     return null;
   }
 }
@@ -90,14 +88,12 @@ export async function cancelDreamReminder(): Promise<void> {
 
     if (notificationId) {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
-      console.log('Cancelled existing dream reminder');
     }
 
     // Clear stored settings
     await AsyncStorage.removeItem(REMINDER_STORAGE_KEY);
     await AsyncStorage.removeItem(NOTIFICATION_ID_KEY);
   } catch (error) {
-    console.error('Failed to cancel dream reminder:', error);
   }
 }
 
@@ -112,7 +108,6 @@ export async function getReminderSettings(): Promise<ReminderSettings | null> {
     }
     return null;
   } catch (error) {
-    console.error('Failed to get reminder settings:', error);
     return null;
   }
 }
@@ -134,12 +129,10 @@ export async function reregisterReminderIfNeeded(): Promise<void> {
 
       if (!isStillScheduled) {
         // Re-schedule the notification
-        console.log('Re-registering dream reminder...');
         await scheduleDreamReminder(settings.hour, settings.minute);
       }
     }
   } catch (error) {
-    console.error('Failed to re-register reminder:', error);
   }
 }
 

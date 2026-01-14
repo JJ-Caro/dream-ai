@@ -32,7 +32,6 @@ let isRecordingActive = false;
 export async function startRecording(): Promise<void> {
   // Prevent multiple concurrent recordings
   if (isRecordingActive) {
-    console.warn('Recording already in progress');
     return;
   }
 
@@ -66,7 +65,6 @@ export async function startRecording(): Promise<void> {
     );
     recording = newRecording;
   } catch (error) {
-    console.error('Failed to start recording:', error);
     recording = null;
     isRecordingActive = false;
     throw error;
@@ -115,8 +113,7 @@ export async function stopRecording(): Promise<string | null> {
 
     return uri;
   } catch (error) {
-    console.error('Failed to stop recording:', error);
-    return uri; // Return URI if we got it, even if stop failed
+    return uri;
   }
 }
 
@@ -143,7 +140,6 @@ export async function cancelRecording(): Promise<void> {
       await deleteAudioFile(uri);
     }
   } catch (error) {
-    console.error('Failed to cancel recording:', error);
   }
 }
 
@@ -163,7 +159,6 @@ export async function deleteAudioFile(uri: string): Promise<void> {
   try {
     await FileSystem.deleteAsync(uri, { idempotent: true });
   } catch (error) {
-    console.error('Failed to delete audio file:', error);
   }
 }
 

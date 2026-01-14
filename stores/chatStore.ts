@@ -68,7 +68,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [...state.messages, assistantMessage],
       }));
     } catch (error) {
-      console.error('Failed to send message:', error);
       set({ error: 'Failed to get response. Please try again.' });
     } finally {
       set({ isLoading: false });

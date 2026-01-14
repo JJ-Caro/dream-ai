@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface UserContextState {
   userContext: string | null;
@@ -19,6 +19,10 @@ export const useUserContextStore = create<UserContextState>((set, get) => ({
   error: null,
 
   fetchUserContext: async () => {
+    if (!supabase) {
+      set({ isLoading: false, error: 'Database not configured' });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -33,7 +37,6 @@ export const useUserContextStore = create<UserContextState>((set, get) => ({
       if (error && error.code !== 'PGRST116') throw error;
       set({ userContext: data?.user_context || null });
     } catch (error) {
-      console.error('Failed to fetch user context:', error);
       set({ error: 'Failed to load your context' });
     } finally {
       set({ isLoading: false });
@@ -41,6 +44,7 @@ export const useUserContextStore = create<UserContextState>((set, get) => ({
   },
 
   saveUserContext: async (context: string) => {
+    if (!supabase) throw new Error('Database not configured');
     set({ isSaving: true, error: null });
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -57,7 +61,6 @@ export const useUserContextStore = create<UserContextState>((set, get) => ({
       if (error) throw error;
       set({ userContext: context });
     } catch (error) {
-      console.error('Failed to save user context:', error);
       set({ error: 'Failed to save your context' });
       throw error;
     } finally {

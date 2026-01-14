@@ -113,7 +113,6 @@ export default function HomeScreen() {
           }
         }
       } catch (err) {
-        console.error('Error checking streak dismissal:', err);
       }
     };
     checkDismissal();
@@ -127,7 +126,6 @@ export default function HomeScreen() {
       setStreakCardVisible(false);
       haptic.light();
     } catch (err) {
-      console.error('Error dismissing streak card:', err);
     }
   }, []);
 

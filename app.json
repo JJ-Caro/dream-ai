@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "dream-ai",
+    "name": "Dream AI",
     "slug": "dream-ai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,15 +14,30 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dreamai.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Dream AI needs access to your microphone to record your dream descriptions using voice input.",
+        "NSUserNotificationsUsageDescription": "Dream AI uses notifications to remind you to record your dreams and share weekly insights."
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": []
+      }
     },
     "android": {
+      "package": "com.dreamai.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -32,10 +47,29 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Dream AI needs access to your microphone to record your dream descriptions using voice input."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": ""
+      },
+      "privacyPolicyUrl": "https://dreamai.app/privacy"
     }
   }
 }

@@ -1,5 +1,5 @@
 import { proModel } from '@/lib/gemini';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { DEEP_JUNGIAN_ANALYSIS_PROMPT } from '@/constants/prompts';
 import type { DeepAnalysis, Dream } from '@/types/dream';
 
@@ -66,21 +66,19 @@ ${DEEP_JUNGIAN_ANALYSIS_PROMPT}`;
     deepAnalysis.generated_at = new Date().toISOString();
 
     // Save to database
+    if (!supabase) return null;
     const { error } = await supabase
       .from('dreams')
       .update({ deep_analysis: deepAnalysis })
       .eq('id', dreamId);
 
     if (error) {
-      console.error('Failed to save deep analysis:', error);
       return null;
     }
 
-    console.log('Deep analysis generated for dream:', dreamId);
     return deepAnalysis;
 
   } catch (error) {
-    console.error('Failed to generate deep analysis:', error);
     return null;
   }
 }
@@ -140,7 +138,6 @@ export async function triggerDeepAnalysisIfNeeded(
 ): Promise<void> {
   // Only generate if dream doesn't already have deep analysis
   if (dream.deep_analysis) {
-    console.log('Dream already has deep analysis, skipping');
     return;
   }
 
@@ -153,7 +150,6 @@ export async function triggerDeepAnalysisIfNeeded(
     dream.figures,
     dream.emotions,
     userContext
-  ).catch(err => {
-    console.error('Background deep analysis failed:', err);
+  ).catch(() => {
   });
 }

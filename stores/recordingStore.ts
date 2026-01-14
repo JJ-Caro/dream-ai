@@ -25,7 +25,6 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
       await startRecording();
       set({ isRecording: true, duration: 0 });
     } catch (error) {
-      console.error('Failed to start recording:', error);
       set({ error: 'Failed to start recording. Please check permissions.' });
       throw error;
     }
@@ -40,9 +39,8 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
       set({ audioUri: uri });
       return uri;
     } catch (error) {
-      console.error('Failed to stop recording:', error);
       set({ error: 'Failed to stop recording.' });
-      return null; // Return null instead of throwing
+      return null;
     }
   },
 
@@ -59,7 +57,6 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
         set({ duration: Math.floor(status.durationMillis / 1000) });
       }
     } catch (error) {
-      console.error('Failed to update duration:', error);
     }
   },
 }));
