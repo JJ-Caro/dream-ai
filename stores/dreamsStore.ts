@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { analyzeDreamAudio } from '@/lib/gemini';
 import { deleteAudioFile } from '@/lib/audio';
 import { addPendingDream, removePendingDream, getPendingDreams } from '@/lib/storage';
@@ -26,6 +26,10 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
   error: null,
 
   fetchDreams: async () => {
+    if (!supabase) {
+      set({ isLoading: false, error: 'Supabase not configured' });
+      return;
+    }
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
@@ -44,6 +48,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
   },
 
   processDream: async (audioUri: string, durationSeconds: number) => {
+    if (!supabase) throw new Error('Supabase not configured');
     set({ isProcessing: true, error: null });
 
     const recordedAt = new Date().toISOString();
@@ -122,6 +127,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
   },
 
   deleteDream: async (id: string) => {
+    if (!supabase) throw new Error('Supabase not configured');
     try {
       const { error } = await supabase
         .from('dreams')

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -7,6 +7,7 @@ interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isInitialized: boolean;
+  isConfigured: boolean;
 
   initialize: () => Promise<void>;
   signInAnonymously: () => Promise<void>;
@@ -19,10 +20,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   isLoading: false,
   isInitialized: false,
+  isConfigured: isSupabaseConfigured,
 
   initialize: async () => {
+    if (!supabase) {
+      set({ isInitialized: true });
+      return;
+    }
     try {
-      // Get current session
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
@@ -31,7 +36,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isInitialized: true });
       }
 
-      // Listen for auth changes
       supabase.auth.onAuthStateChange((_event, session) => {
         set({ user: session?.user ?? null, session });
       });
@@ -42,12 +46,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signInAnonymously: async () => {
+    if (!supabase) throw new Error('Supabase not configured');
     set({ isLoading: true });
     try {
       const { data, error } = await supabase.auth.signInAnonymously();
       if (error) throw error;
 
-      // Create profile for new user
       if (data.user) {
         await supabase.from('profiles').upsert({
           id: data.user.id,
@@ -65,6 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signInWithEmail: async (email: string) => {
+    if (!supabase) throw new Error('Supabase not configured');
     set({ isLoading: true });
     try {
       const { error } = await supabase.auth.signInWithOtp({
@@ -83,6 +88,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    if (!supabase) throw new Error('Supabase not configured');
     set({ isLoading: true });
     try {
       const { error } = await supabase.auth.signOut();

@@ -1,0 +1,47 @@
+modules = ["nodejs-20", "web"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Expo Web"
+
+[[workflows.workflow]]
+name = "Expo Web"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_SUPABASE_URL = "https://soxnrahqrmihawcnfxsk.supabase.co"
+EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_QqIlMF0aNm_5vUoaL6OSeg_RhAbNUwO"
+EXPO_PUBLIC_GEMINI_API_KEY = "AIzaSyBWfzV_g4pmHwCtJbomA3Ioly7eKr4gil0"
+EXPO_PUBLIC_OPENAI_API_KEY = "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"
+
+[deployment]
+deploymentTarget = "static"
+build = ["npx", "expo", "export", "--platform", "web"]
+publicDir = "dist"

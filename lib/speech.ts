@@ -8,6 +8,7 @@ console.log('OpenAI API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : 
 
 const openai = new OpenAI({
   apiKey: apiKey,
+  dangerouslyAllowBrowser: true,
 });
 
 // Voice options: alloy, echo, fable, onyx, nova, shimmer
