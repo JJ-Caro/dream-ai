@@ -100,15 +100,18 @@ export default function TabLayout() {
           letterSpacing: 0.3,
         },
         headerShown: false,
-        tabBarButton: (props) => (
-          <Pressable
-            {...props}
-            onPressIn={() => {
-              haptic.selection();
-              props.onPressIn?.();
-            }}
-          />
-        ),
+        tabBarButton: (props) => {
+          const { onPressIn, ref, ...rest } = props;
+          return (
+            <Pressable
+              {...rest}
+              onPressIn={(e) => {
+                haptic.selection();
+                onPressIn?.(e);
+              }}
+            />
+          );
+        },
       }}
     >
       <Tabs.Screen

@@ -76,8 +76,8 @@ export function Button({
             style={[
               styles.text,
               { fontSize: textSizes[size] },
-              icon && styles.textWithIcon,
-              disabled && styles.textDisabled,
+              icon ? styles.textWithIcon : undefined,
+              disabled ? styles.textDisabled : undefined,
               textStyle,
             ]}
           >
@@ -124,9 +124,9 @@ export function Button({
         style={[
           styles.text,
           { fontSize: textSizes[size] },
-          variant === 'ghost' && { color: colors.textSecondary },
-          icon && styles.textWithIcon,
-          disabled && styles.textDisabled,
+          variant === 'ghost' ? { color: colors.textSecondary } : undefined,
+          icon ? styles.textWithIcon : undefined,
+          disabled ? styles.textDisabled : undefined,
           textStyle,
         ]}
       >

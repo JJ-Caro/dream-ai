@@ -55,7 +55,7 @@ const ARCHETYPE_CONFIG: Record<JungianArchetype, { icon: string; label: string; 
   },
 };
 
-function PatternBar({ data, gradientColors, index }: { data: PatternData; gradientColors: readonly [string, string] | string[]; index: number }) {
+function PatternBar({ data, gradientColors, index }: { data: PatternData; gradientColors: readonly string[]; index: number }) {
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 50).duration(300)}
@@ -67,7 +67,7 @@ function PatternBar({ data, gradientColors, index }: { data: PatternData; gradie
       </View>
       <View style={styles.patternBarTrack}>
         <LinearGradient
-          colors={gradientColors as [string, string]}
+          colors={[...gradientColors] as [string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.patternBarFill, { width: `${Math.max(data.percentage, 5)}%` }]}
@@ -103,11 +103,11 @@ function PatternCard({
   );
 }
 
-function StatCard({ value, label, gradientColors, delay }: { value: string | number; label: string; gradientColors: readonly [string, string] | string[]; delay: number }) {
+function StatCard({ value, label, gradientColors, delay }: { value: string | number; label: string; gradientColors: readonly string[]; delay: number }) {
   return (
     <Animated.View entering={FadeInUp.delay(delay).duration(400).springify()} style={styles.statCardWrapper}>
       <GlassCard style={styles.statCard} intensity="light">
-        <LinearGradient colors={gradientColors as [string, string]} style={styles.statGradient}>
+        <LinearGradient colors={[...gradientColors] as [string, string]} style={styles.statGradient}>
           <Text style={styles.statValue}>{value}</Text>
         </LinearGradient>
         <Text style={styles.statLabel}>{label}</Text>
@@ -515,7 +515,7 @@ export default function PatternsScreen() {
                 }}
                 style={styles.recordButton}
               >
-                <LinearGradient colors={colors.gradients.recordButton as [string, string]} style={styles.recordButtonGradient}>
+                <LinearGradient colors={[...colors.gradients.recordButton] as [string, string, string]} style={styles.recordButtonGradient}>
                   <FontAwesome name="microphone" size={18} color={colors.textPrimary} />
                   <Text style={styles.recordButtonText}>Record a Dream</Text>
                 </LinearGradient>
@@ -697,7 +697,7 @@ export default function PatternsScreen() {
           {/* Chat about patterns */}
           <Animated.View entering={FadeInUp.delay(700).duration(400).springify()}>
             <Pressable onPress={handleChatAboutPatterns} style={styles.chatButton}>
-              <LinearGradient colors={colors.gradients.recordButton as [string, string]} style={styles.chatButtonGradient}>
+              <LinearGradient colors={[...colors.gradients.recordButton] as [string, string, string]} style={styles.chatButtonGradient}>
                 <FontAwesome name="comments-o" size={20} color={colors.textPrimary} />
                 <View style={styles.chatButtonText}>
                   <Text style={styles.chatButtonTitle}>Explore Your Patterns</Text>

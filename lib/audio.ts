@@ -1,5 +1,6 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
+import { logError, logWarning } from '@/lib/errorLogger';
 
 // Recording settings optimized for voice (M4A/AAC, 64kbps mono)
 const RECORDING_OPTIONS: Audio.RecordingOptions = {
@@ -40,8 +41,8 @@ export async function startRecording(): Promise<void> {
     if (recording) {
       try {
         await recording.stopAndUnloadAsync();
-      } catch {
-        // Ignore cleanup errors
+      } catch (err) {
+        logWarning('startRecording', 'Failed to cleanup previous recording');
       }
       recording = null;
     }
@@ -93,12 +94,13 @@ export async function stopRecording(): Promise<string | null> {
       if (status?.isRecording) {
         await currentRecording.stopAndUnloadAsync();
       }
-    } catch {
+    } catch (err) {
       // Recording may already be stopped, try to unload anyway
+      logWarning('stopRecording', 'Recording may already be stopped');
       try {
         await currentRecording.stopAndUnloadAsync();
-      } catch {
-        // Ignore - recording is already unloaded
+      } catch (unloadErr) {
+        logWarning('stopRecording', 'Recording already unloaded');
       }
     }
 
@@ -107,8 +109,8 @@ export async function stopRecording(): Promise<string | null> {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
-    } catch {
-      // Ignore audio mode errors
+    } catch (err) {
+      logWarning('stopRecording', 'Failed to reset audio mode');
     }
 
     return uri;
@@ -131,8 +133,8 @@ export async function cancelRecording(): Promise<void> {
 
     try {
       await currentRecording.stopAndUnloadAsync();
-    } catch {
-      // Ignore stop errors
+    } catch (err) {
+      logWarning('cancelRecording', 'Failed to stop recording');
     }
 
     // Delete the cancelled recording
@@ -140,6 +142,7 @@ export async function cancelRecording(): Promise<void> {
       await deleteAudioFile(uri);
     }
   } catch (error) {
+    logError('cancelRecording', error);
   }
 }
 
@@ -159,6 +162,7 @@ export async function deleteAudioFile(uri: string): Promise<void> {
   try {
     await FileSystem.deleteAsync(uri, { idempotent: true });
   } catch (error) {
+    logWarning('deleteAudioFile', `Failed to delete audio file: ${uri}`);
   }
 }
 
@@ -170,7 +174,8 @@ export async function ensureAudioDirectory(): Promise<void> {
   try {
     const dirPath = getAudioDirectory();
     await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
-  } catch {
-    // Directory likely already exists, ignore
+  } catch (err) {
+    // Directory likely already exists
+    logWarning('ensureAudioDirectory', 'Directory may already exist');
   }
 }

@@ -4,6 +4,7 @@ import { analyzeDreamAudio } from '@/lib/gemini';
 import { deleteAudioFile } from '@/lib/audio';
 import { addPendingDream, removePendingDream, getPendingDreams } from '@/lib/storage';
 import { useUserContextStore } from '@/stores/userContextStore';
+import { logError, logWarning } from '@/lib/errorLogger';
 import type { Dream, DreamInsert, DeepAnalysis } from '@/types/dream';
 
 interface DreamsState {
@@ -40,6 +41,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
       if (error) throw error;
       set({ dreams: data as Dream[] });
     } catch (error) {
+      logError('fetchDreams', error);
       set({ error: 'Failed to load dreams' });
     } finally {
       set({ isLoading: false });
@@ -117,6 +119,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
 
       return newDream;
     } catch (error) {
+      logError('processDream', error);
       set({ error: 'Failed to process dream. It will be synced when online.' });
       throw error;
     } finally {
@@ -150,6 +153,8 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
       try {
         await get().processDream(dream.audioUri, dream.durationSeconds);
       } catch (error) {
+        logError('syncPendingDreams', error);
+        logWarning('syncPendingDreams', `Failed to sync pending dream: ${dream.id}`);
       }
     }
   },

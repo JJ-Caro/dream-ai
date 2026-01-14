@@ -21,6 +21,7 @@ import { speak, stop as stopSpeech, initializeSpeech } from '@/lib/speech';
 import { colors } from '@/constants/colors';
 import { DreamyBackground, GlassCard, TypingIndicator } from '@/components/ui';
 import { haptic } from '@/lib/haptics';
+import { logError } from '@/lib/errorLogger';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Animated, {
   useSharedValue,
@@ -410,6 +411,7 @@ export default function ChatScreen() {
         }
         reset();
       } catch (error) {
+        logError('handleVoiceRecord:stop', error);
         reset();
         setIsTranscribing(false);
       }
@@ -419,6 +421,7 @@ export default function ChatScreen() {
       try {
         await start();
       } catch (error) {
+        logError('handleVoiceRecord', error);
       }
     }
   };

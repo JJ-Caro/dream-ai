@@ -238,7 +238,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (user) {
+              if (user && supabase) {
                 haptic.error();
                 await supabase.from('dreams').delete().eq('user_id', user.id);
                 useDreamsStore.getState().fetchDreams();

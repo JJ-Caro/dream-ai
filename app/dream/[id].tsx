@@ -116,6 +116,7 @@ function DeepAnalysisSection({ deepAnalysis, delay }: { deepAnalysis: DeepAnalys
   const [isPlaying, setIsPlaying] = useState(false);
 
   const archetype = deepAnalysis.primary_archetype;
+  if (!archetype?.type) return null;
   const config = ARCHETYPE_CONFIG[archetype.type] || ARCHETYPE_CONFIG.shadow;
 
   // Compose analysis text for TTS
@@ -124,7 +125,9 @@ function DeepAnalysisSection({ deepAnalysis, delay }: { deepAnalysis: DeepAnalys
 
     // Primary archetype
     parts.push(`The primary archetype in this dream is the ${config.label}, with ${Math.round(archetype.confidence * 100)} percent confidence.`);
-    parts.push(archetype.psychological_meaning);
+    if (archetype.psychological_meaning) {
+      parts.push(archetype.psychological_meaning);
+    }
 
     // Synthesis
     if (deepAnalysis.synthesis) {
@@ -325,7 +328,9 @@ export default function DreamDetailScreen() {
   const [deepAnalysis, setDeepAnalysis] = useState<DeepAnalysis | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const dream = dreams.find((d) => d.id === id);
+  // Handle case where id is undefined
+  const dreamId = id ?? '';
+  const dream = dreams.find((d) => d.id === dreamId);
 
   // Sync deep analysis from dream if available
   if (dream?.deep_analysis && !deepAnalysis) {

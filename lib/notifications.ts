@@ -2,9 +2,11 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { logError, logWarning, logDebug } from '@/lib/errorLogger';
 
 const REMINDER_STORAGE_KEY = '@dream_reminder_time';
 const NOTIFICATION_ID_KEY = '@dream_notification_id';
+const CHANNEL_ID = 'dream-reminders';
 
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
@@ -16,6 +18,23 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+/**
+ * Set up notification channel for Android
+ */
+async function setupNotificationChannel(): Promise<void> {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: 'Dream Reminders',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#4FD1C5',
+      sound: 'default',
+      enableVibrate: true,
+      showBadge: false,
+    });
+  }
+}
 
 export interface ReminderSettings {
   enabled: boolean;
@@ -54,12 +73,16 @@ export async function scheduleDreamReminder(hour: number, minute: number): Promi
     // Cancel any existing reminder first
     await cancelDreamReminder();
 
+    // Set up Android channel
+    await setupNotificationChannel();
+
     // Schedule new daily notification
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: "Time to log your dream ✨",
         body: "Capture your dream before it fades away",
         sound: true,
+        ...(Platform.OS === 'android' && { channelId: CHANNEL_ID }),
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -68,6 +91,8 @@ export async function scheduleDreamReminder(hour: number, minute: number): Promi
       },
     });
 
+    logDebug('scheduleDreamReminder', `Scheduled notification for ${hour}:${minute}`, { notificationId });
+
     // Save settings to AsyncStorage
     const settings: ReminderSettings = { enabled: true, hour, minute };
     await AsyncStorage.setItem(REMINDER_STORAGE_KEY, JSON.stringify(settings));
@@ -75,6 +100,7 @@ export async function scheduleDreamReminder(hour: number, minute: number): Promi
 
     return notificationId;
   } catch (error) {
+    logError('scheduleDreamReminder', error);
     return null;
   }
 }
@@ -94,6 +120,7 @@ export async function cancelDreamReminder(): Promise<void> {
     await AsyncStorage.removeItem(REMINDER_STORAGE_KEY);
     await AsyncStorage.removeItem(NOTIFICATION_ID_KEY);
   } catch (error) {
+    logError('cancelDreamReminder', error);
   }
 }
 
@@ -108,6 +135,7 @@ export async function getReminderSettings(): Promise<ReminderSettings | null> {
     }
     return null;
   } catch (error) {
+    logError('getReminderSettings', error);
     return null;
   }
 }
@@ -118,6 +146,9 @@ export async function getReminderSettings(): Promise<ReminderSettings | null> {
  */
 export async function reregisterReminderIfNeeded(): Promise<void> {
   try {
+    // Always set up the Android channel on app start
+    await setupNotificationChannel();
+
     const settings = await getReminderSettings();
 
     if (settings && settings.enabled) {
@@ -128,11 +159,15 @@ export async function reregisterReminderIfNeeded(): Promise<void> {
       const isStillScheduled = scheduled.some(n => n.identifier === notificationId);
 
       if (!isStillScheduled) {
+        logDebug('reregisterReminderIfNeeded', 'Re-scheduling notification that was cleared');
         // Re-schedule the notification
         await scheduleDreamReminder(settings.hour, settings.minute);
+      } else {
+        logDebug('reregisterReminderIfNeeded', 'Notification is still scheduled', { notificationId });
       }
     }
   } catch (error) {
+    logError('reregisterReminderIfNeeded', error);
   }
 }
 

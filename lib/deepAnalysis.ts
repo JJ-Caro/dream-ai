@@ -1,6 +1,7 @@
 import { proModel } from '@/lib/gemini';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { DEEP_JUNGIAN_ANALYSIS_PROMPT } from '@/constants/prompts';
+import { logError, logWarning } from '@/lib/errorLogger';
 import type { DeepAnalysis, Dream } from '@/types/dream';
 
 /**
@@ -73,12 +74,14 @@ ${DEEP_JUNGIAN_ANALYSIS_PROMPT}`;
       .eq('id', dreamId);
 
     if (error) {
+      logError('generateDeepAnalysis', error);
       return null;
     }
 
     return deepAnalysis;
 
   } catch (error) {
+    logError('generateDeepAnalysis', error);
     return null;
   }
 }
@@ -150,6 +153,7 @@ export async function triggerDeepAnalysisIfNeeded(
     dream.figures,
     dream.emotions,
     userContext
-  ).catch(() => {
+  ).catch((error) => {
+    logError('triggerDeepAnalysisIfNeeded', error);
   });
 }

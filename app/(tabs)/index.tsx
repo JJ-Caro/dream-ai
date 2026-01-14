@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { calculateStreak, getStreakMessage } from '@/lib/streak';
 import { haptic } from '@/lib/haptics';
 import { colors } from '@/constants/colors';
+import { logError } from '@/lib/errorLogger';
 import { DreamyBackground, GlassCard } from '@/components/ui';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import Animated, {
@@ -113,6 +114,7 @@ export default function HomeScreen() {
           }
         }
       } catch (err) {
+        logError('checkDismissal', err);
       }
     };
     checkDismissal();
@@ -126,6 +128,7 @@ export default function HomeScreen() {
       setStreakCardVisible(false);
       haptic.light();
     } catch (err) {
+      logError('dismissStreakCard', err);
     }
   }, []);
 

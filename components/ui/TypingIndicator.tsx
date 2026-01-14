@@ -6,6 +6,7 @@ import Animated, {
   withSequence,
   withTiming,
   withDelay,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
 import { colors } from '@/constants/colors';
@@ -16,7 +17,7 @@ export function TypingIndicator() {
   const dot3 = useSharedValue(0.4);
 
   useEffect(() => {
-    const animateDot = (dot: Animated.SharedValue<number>, delay: number) => {
+    const animateDot = (dot: SharedValue<number>, delay: number) => {
       dot.value = withDelay(
         delay,
         withRepeat(

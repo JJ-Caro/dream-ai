@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { startRecording, stopRecording, getRecordingStatus } from '@/lib/audio';
+import { logWarning } from '@/lib/errorLogger';
 
 interface RecordingState {
   isRecording: boolean;
@@ -57,6 +58,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
         set({ duration: Math.floor(status.durationMillis / 1000) });
       }
     } catch (error) {
+      logWarning('updateDuration', 'Failed to get recording status');
     }
   },
 }));

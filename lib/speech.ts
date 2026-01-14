@@ -1,12 +1,13 @@
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import OpenAI from 'openai';
+import { logError, logWarning } from '@/lib/errorLogger';
 
 const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
 const openai = new OpenAI({
   apiKey: apiKey,
-  dangerouslyAllowBrowser: true,
+  dangerouslyAllowBrowser: true, // Required for React Native - API key should be rotated regularly
 });
 
 // Voice options: alloy, echo, fable, onyx, nova, shimmer
@@ -25,6 +26,7 @@ export async function initializeSpeech(): Promise<void> {
       shouldDuckAndroid: true,
     });
   } catch (error) {
+    logError('initializeSpeech', error);
   }
 }
 
@@ -123,7 +125,8 @@ export async function stop(): Promise<void> {
       await sound.stopAsync();
       await sound.unloadAsync();
     } catch (error) {
-      // Ignore errors when stopping - sound may already be stopped
+      // Sound may already be stopped
+      logWarning('stop', 'Sound may already be stopped');
     }
   }
 }
@@ -152,6 +155,7 @@ async function cleanup(sound: Audio.Sound | null, filePath: string): Promise<voi
       await FileSystem.deleteAsync(filePath, { idempotent: true });
     }
   } catch (error) {
-    // Ignore cleanup errors - file/sound may already be cleaned up
+    // File/sound may already be cleaned up
+    logWarning('cleanup', 'Cleanup may have already occurred');
   }
 }
