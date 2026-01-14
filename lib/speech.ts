@@ -1,9 +1,13 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import OpenAI from 'openai';
 
+// Debug: Check if API key is loaded
+const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+console.log('OpenAI API Key loaded:', apiKey ? `${apiKey.substring(0, 8)}...` : 'NOT FOUND');
+
 const openai = new OpenAI({
-  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+  apiKey: apiKey,
 });
 
 // Voice options: alloy, echo, fable, onyx, nova, shimmer
@@ -53,10 +57,10 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
     const arrayBuffer = await mp3Response.arrayBuffer();
     const base64 = arrayBufferToBase64(arrayBuffer);
 
-    // Save to temporary file using the correct expo-file-system API
+    // Save to temporary file
     const tempPath = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
     await FileSystem.writeAsStringAsync(tempPath, base64, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
 
     // Create and play sound
@@ -91,7 +95,7 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
 
       const tempPath = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
       await FileSystem.writeAsStringAsync(tempPath, base64, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       const { sound } = await Audio.Sound.createAsync(
@@ -116,16 +120,18 @@ export async function speak(text: string, options?: SpeakOptions): Promise<void>
 }
 
 export async function stop(): Promise<void> {
-  if (currentSound) {
-    try {
-      await currentSound.stopAsync();
-      await currentSound.unloadAsync();
-    } catch (error) {
-      console.error('Error stopping sound:', error);
-    }
-    currentSound = null;
-  }
+  const sound = currentSound;
+  currentSound = null;
   isSpeaking = false;
+
+  if (sound) {
+    try {
+      await sound.stopAsync();
+      await sound.unloadAsync();
+    } catch (error) {
+      // Ignore errors when stopping - sound may already be stopped
+    }
+  }
 }
 
 export function getIsSpeaking(): boolean {
@@ -143,14 +149,15 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 }
 
 // Cleanup sound and temp file
-async function cleanup(sound: Audio.Sound, filePath: string): Promise<void> {
+async function cleanup(sound: Audio.Sound | null, filePath: string): Promise<void> {
   try {
-    await sound.unloadAsync();
-    const fileInfo = await FileSystem.getInfoAsync(filePath);
-    if (fileInfo.exists) {
+    if (sound) {
+      await sound.unloadAsync();
+    }
+    if (filePath) {
       await FileSystem.deleteAsync(filePath, { idempotent: true });
     }
   } catch (error) {
-    console.error('Cleanup error:', error);
+    // Ignore cleanup errors - file/sound may already be cleaned up
   }
 }

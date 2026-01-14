@@ -32,14 +32,17 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   },
 
   stop: async () => {
+    // Always reset state first
+    set({ isRecording: false });
+
     try {
       const uri = await stopRecording();
-      set({ isRecording: false, audioUri: uri });
+      set({ audioUri: uri });
       return uri;
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      set({ isRecording: false, error: 'Failed to stop recording.' });
-      throw error;
+      set({ error: 'Failed to stop recording.' });
+      return null; // Return null instead of throwing
     }
   },
 

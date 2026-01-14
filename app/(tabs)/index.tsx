@@ -1,9 +1,11 @@
 import { View, Text, Pressable, Modal, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useRecordingStore } from '@/stores/recordingStore';
 import { useDreamsStore } from '@/stores/dreamsStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -25,7 +27,10 @@ import Animated, {
   FadeIn,
   FadeInUp,
   FadeOut,
+  runOnJS,
 } from 'react-native-reanimated';
+
+const STREAK_DISMISSAL_KEY = 'streak_card_dismissed_date';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const RECORD_BUTTON_SIZE = 120;
@@ -85,11 +90,78 @@ export default function HomeScreen() {
   const { dreams, processDream, isProcessing, fetchDreams } = useDreamsStore();
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [streakCardVisible, setStreakCardVisible] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Calculate streak
   const streak = useMemo(() => calculateStreak(dreams), [dreams]);
   const streakMessage = useMemo(() => getStreakMessage(streak), [streak]);
+
+  // Streak card swipe animation
+  const streakTranslateY = useSharedValue(0);
+  const streakOpacity = useSharedValue(1);
+
+  // Check if streak card was dismissed today
+  useEffect(() => {
+    const checkDismissal = async () => {
+      try {
+        const dismissedDate = await AsyncStorage.getItem(STREAK_DISMISSAL_KEY);
+        if (dismissedDate) {
+          const today = new Date().toDateString();
+          if (dismissedDate === today) {
+            setStreakCardVisible(false);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking streak dismissal:', err);
+      }
+    };
+    checkDismissal();
+  }, []);
+
+  // Dismiss streak card for today
+  const dismissStreakCard = useCallback(async () => {
+    try {
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem(STREAK_DISMISSAL_KEY, today);
+      setStreakCardVisible(false);
+      haptic.light();
+    } catch (err) {
+      console.error('Error dismissing streak card:', err);
+    }
+  }, []);
+
+  // Swipe up gesture to dismiss streak card
+  const streakSwipeGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      // Only allow upward swipes (negative translationY)
+      if (event.translationY < 0) {
+        streakTranslateY.value = event.translationY;
+        streakOpacity.value = interpolate(
+          Math.abs(event.translationY),
+          [0, 100],
+          [1, 0]
+        );
+      }
+    })
+    .onEnd((event) => {
+      // If swiped up more than 50px, dismiss
+      if (event.translationY < -50) {
+        streakTranslateY.value = withTiming(-150, { duration: 200 });
+        streakOpacity.value = withTiming(0, { duration: 200 }, () => {
+          runOnJS(dismissStreakCard)();
+        });
+      } else {
+        // Snap back
+        streakTranslateY.value = withSpring(0);
+        streakOpacity.value = withSpring(1);
+      }
+    });
+
+  const streakCardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: streakTranslateY.value }],
+    opacity: streakOpacity.value,
+  }));
 
   // Fetch dreams on mount
   useEffect(() => {
@@ -227,47 +299,57 @@ export default function HomeScreen() {
   return (
     <DreamyBackground starCount={60}>
       <SafeAreaView style={styles.safeArea}>
-        {/* Streak Banner */}
-        <Animated.View entering={FadeInUp.delay(200).duration(600)}>
-          <Pressable
-            onPress={() => {
-              haptic.light();
-              router.push('/patterns');
-            }}
-            style={styles.streakBanner}
-          >
-            <GlassCard
-              intensity="light"
-              glowColor={streak.streakAtRisk ? colors.negative : colors.secondary}
-              style={streak.streakAtRisk ? styles.streakAtRisk : undefined}
+        {/* Streak Banner - Swipe up to dismiss */}
+        {streakCardVisible && (
+          <GestureDetector gesture={streakSwipeGesture}>
+            <Animated.View
+              entering={FadeInUp.delay(200).duration(600)}
+              style={streakCardAnimatedStyle}
             >
-              <View style={styles.streakContent}>
-                <Animated.View style={fireStyle}>
-                  <Text style={styles.streakEmoji}>
-                    {streak.currentStreak > 0 ? '🔥' : '🌙'}
-                  </Text>
-                </Animated.View>
-                <View style={styles.streakInfo}>
-                  <View style={styles.streakRow}>
-                    <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
-                    <Text style={styles.streakLabel}>
-                      {streak.currentStreak === 1 ? ' day streak' : ' day streak'}
-                    </Text>
+              <Pressable
+                onPress={() => {
+                  haptic.light();
+                  router.push('/patterns');
+                }}
+                style={styles.streakBanner}
+              >
+                <GlassCard
+                  intensity="light"
+                  glowColor={streak.streakAtRisk ? colors.negative : colors.secondary}
+                  style={streak.streakAtRisk ? styles.streakAtRisk : undefined}
+                >
+                  <View style={styles.streakContent}>
+                    <Animated.View style={fireStyle}>
+                      <Text style={styles.streakEmoji}>
+                        {streak.currentStreak > 0 ? '🔥' : '🌙'}
+                      </Text>
+                    </Animated.View>
+                    <View style={styles.streakInfo}>
+                      <View style={styles.streakRow}>
+                        <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
+                        <Text style={styles.streakLabel}>
+                          {streak.currentStreak === 1 ? ' day streak' : ' day streak'}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.streakMessage,
+                          streak.streakAtRisk && styles.streakAtRiskText,
+                        ]}
+                      >
+                        {streakMessage}
+                      </Text>
+                    </View>
+                    <View style={styles.streakActions}>
+                      <FontAwesome name="chevron-up" size={10} color={colors.textTertiary} style={styles.swipeHint} />
+                      <FontAwesome name="chevron-right" size={14} color={colors.textTertiary} />
+                    </View>
                   </View>
-                  <Text
-                    style={[
-                      styles.streakMessage,
-                      streak.streakAtRisk && styles.streakAtRiskText,
-                    ]}
-                  >
-                    {streakMessage}
-                  </Text>
-                </View>
-                <FontAwesome name="chevron-right" size={14} color={colors.textTertiary} />
-              </View>
-            </GlassCard>
-          </Pressable>
-        </Animated.View>
+                </GlassCard>
+              </Pressable>
+            </Animated.View>
+          </GestureDetector>
+        )}
 
         {/* Main Content */}
         <View style={styles.mainContent}>
@@ -498,6 +580,13 @@ const styles = StyleSheet.create({
   },
   streakAtRiskText: {
     color: colors.negative,
+  },
+  streakActions: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  swipeHint: {
+    opacity: 0.5,
   },
   mainContent: {
     flex: 1,

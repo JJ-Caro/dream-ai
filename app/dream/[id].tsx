@@ -1,15 +1,19 @@
-import { View, Text, ScrollView, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDreamsStore } from '@/stores/dreamsStore';
 import { useChatStore } from '@/stores/chatStore';
+import { useUserContextStore } from '@/stores/userContextStore';
 import { colors } from '@/constants/colors';
 import { DreamyBackground, GlassCard } from '@/components/ui';
 import { haptic } from '@/lib/haptics';
+import { speak, stop, getIsSpeaking } from '@/lib/speech';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useState } from 'react';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { generateDeepAnalysis } from '@/lib/deepAnalysis';
+import type { DeepAnalysis } from '@/types/dream';
 
 function Section({
   title,
@@ -96,13 +100,271 @@ function IntensityBar({ intensity }: { intensity: number }) {
   );
 }
 
+// Archetype display configuration
+const ARCHETYPE_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
+  shadow: { icon: 'user-secret', color: '#8B5CF6', label: 'Shadow' },
+  anima_animus: { icon: 'heart', color: '#EC4899', label: 'Anima/Animus' },
+  self: { icon: 'sun-o', color: '#F59E0B', label: 'Self' },
+  persona: { icon: 'mask', color: '#64748B', label: 'Persona' },
+  hero: { icon: 'shield', color: '#14B8A6', label: 'Hero' },
+};
+
+function DeepAnalysisSection({ deepAnalysis, delay }: { deepAnalysis: DeepAnalysis; delay: number }) {
+  const [synthesisExpanded, setSynthesisExpanded] = useState(true);
+  const [amplificationsExpanded, setAmplificationsExpanded] = useState(false);
+  const [questionsExpanded, setQuestionsExpanded] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const archetype = deepAnalysis.primary_archetype;
+  const config = ARCHETYPE_CONFIG[archetype.type] || ARCHETYPE_CONFIG.shadow;
+
+  // Compose analysis text for TTS
+  const composeAnalysisText = () => {
+    const parts: string[] = [];
+
+    // Primary archetype
+    parts.push(`The primary archetype in this dream is the ${config.label}, with ${Math.round(archetype.confidence * 100)} percent confidence.`);
+    parts.push(archetype.psychological_meaning);
+
+    // Synthesis
+    if (deepAnalysis.synthesis) {
+      parts.push(`Here's the interpretation: ${deepAnalysis.synthesis}`);
+    }
+
+    // Compensatory dynamic
+    if (deepAnalysis.compensatory_dynamic) {
+      parts.push(`Regarding the compensatory dynamic: ${deepAnalysis.compensatory_dynamic}`);
+    }
+
+    // Questions for reflection
+    if (deepAnalysis.questions_for_reflection && deepAnalysis.questions_for_reflection.length > 0) {
+      parts.push('Here are some questions to reflect on:');
+      deepAnalysis.questions_for_reflection.forEach((q, i) => {
+        parts.push(`${i + 1}. ${q}`);
+      });
+    }
+
+    return parts.join(' ');
+  };
+
+  const handleListen = async () => {
+    haptic.medium();
+
+    if (isPlaying) {
+      await stop();
+      setIsPlaying(false);
+      return;
+    }
+
+    setIsPlaying(true);
+    const text = composeAnalysisText();
+
+    await speak(text, {
+      onDone: () => setIsPlaying(false),
+      onError: () => {
+        setIsPlaying(false);
+        Alert.alert('Error', 'Failed to play audio. Please try again.');
+      },
+    });
+  };
+
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).duration(400).springify()}>
+      <GlassCard style={styles.deepAnalysisCard} glowColor={config.color} intensity="medium">
+        {/* Header with premium styling */}
+        <View style={styles.deepAnalysisHeader}>
+          <LinearGradient
+            colors={[config.color, `${config.color}99`]}
+            style={styles.deepAnalysisIcon}
+          >
+            <FontAwesome name="star" size={16} color="#fff" />
+          </LinearGradient>
+          <View style={styles.deepAnalysisHeaderText}>
+            <Text style={styles.deepAnalysisTitle}>Deep Jungian Analysis</Text>
+            <Text style={styles.deepAnalysisSubtitle}>Powered by Gemini Pro</Text>
+          </View>
+          {/* Listen Button */}
+          <Pressable onPress={handleListen} style={styles.listenButton}>
+            <LinearGradient
+              colors={isPlaying ? ['#EF4444', '#DC2626'] : colors.gradients.tealToPurple}
+              style={styles.listenButtonGradient}
+            >
+              <FontAwesome
+                name={isPlaying ? 'stop' : 'volume-up'}
+                size={14}
+                color="#fff"
+              />
+            </LinearGradient>
+          </Pressable>
+        </View>
+
+        {/* Primary Archetype */}
+        <View style={styles.archetypeSection}>
+          <View style={[styles.archetypeBadge, { backgroundColor: `${config.color}20`, borderColor: `${config.color}40` }]}>
+            <FontAwesome name={config.icon as any} size={14} color={config.color} />
+            <Text style={[styles.archetypeLabel, { color: config.color }]}>{config.label}</Text>
+            <View style={[styles.confidenceBadge, { backgroundColor: `${config.color}30` }]}>
+              <Text style={[styles.confidenceText, { color: config.color }]}>
+                {Math.round(archetype.confidence * 100)}%
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.archetypeMeaning}>{archetype.psychological_meaning}</Text>
+          {archetype.evidence.length > 0 && (
+            <View style={styles.evidenceContainer}>
+              {archetype.evidence.map((e, i) => (
+                <Text key={i} style={styles.evidenceItem}>• {e}</Text>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Synthesis (collapsible) */}
+        <Pressable
+          onPress={() => { haptic.selection(); setSynthesisExpanded(!synthesisExpanded); }}
+          style={styles.collapsibleHeader}
+        >
+          <Text style={styles.collapsibleTitle}>Interpretation</Text>
+          <FontAwesome
+            name={synthesisExpanded ? 'chevron-up' : 'chevron-down'}
+            size={12}
+            color={colors.textTertiary}
+          />
+        </Pressable>
+        {synthesisExpanded && (
+          <Text style={styles.synthesisText}>{deepAnalysis.synthesis}</Text>
+        )}
+
+        {/* Compensatory Dynamic */}
+        {deepAnalysis.compensatory_dynamic && (
+          <View style={styles.compensatorySection}>
+            <View style={styles.compensatoryHeader}>
+              <FontAwesome name="balance-scale" size={12} color={colors.primary} />
+              <Text style={styles.compensatoryTitle}>Compensatory Dynamic</Text>
+            </View>
+            <Text style={styles.compensatoryText}>{deepAnalysis.compensatory_dynamic}</Text>
+          </View>
+        )}
+
+        {/* Amplifications (collapsible) */}
+        {deepAnalysis.amplifications && deepAnalysis.amplifications.length > 0 && (
+          <>
+            <Pressable
+              onPress={() => { haptic.selection(); setAmplificationsExpanded(!amplificationsExpanded); }}
+              style={styles.collapsibleHeader}
+            >
+              <Text style={styles.collapsibleTitle}>Symbol Amplifications</Text>
+              <FontAwesome
+                name={amplificationsExpanded ? 'chevron-up' : 'chevron-down'}
+                size={12}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+            {amplificationsExpanded && (
+              <View style={styles.amplificationsContainer}>
+                {deepAnalysis.amplifications.map((amp, i) => (
+                  <View key={i} style={styles.amplificationItem}>
+                    <Text style={styles.amplificationSymbol}>{amp.symbol}</Text>
+                    <Text style={styles.amplificationMythological}>{amp.mythological}</Text>
+                    {amp.personal_connection && (
+                      <Text style={styles.amplificationPersonal}>
+                        <Text style={styles.amplificationPersonalLabel}>Personal: </Text>
+                        {amp.personal_connection}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+
+        {/* Questions for Reflection (collapsible) */}
+        {deepAnalysis.questions_for_reflection && deepAnalysis.questions_for_reflection.length > 0 && (
+          <>
+            <Pressable
+              onPress={() => { haptic.selection(); setQuestionsExpanded(!questionsExpanded); }}
+              style={styles.collapsibleHeader}
+            >
+              <Text style={styles.collapsibleTitle}>Questions for Reflection</Text>
+              <FontAwesome
+                name={questionsExpanded ? 'chevron-up' : 'chevron-down'}
+                size={12}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+            {questionsExpanded && (
+              <View style={styles.questionsContainer}>
+                {deepAnalysis.questions_for_reflection.map((q, i) => (
+                  <View key={i} style={styles.questionItem}>
+                    <LinearGradient
+                      colors={colors.gradients.tealToPurple}
+                      style={styles.questionNumber}
+                    >
+                      <Text style={styles.questionNumberText}>{i + 1}</Text>
+                    </LinearGradient>
+                    <Text style={styles.questionText}>{q}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+      </GlassCard>
+    </Animated.View>
+  );
+}
+
+
 export default function DreamDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { dreams, deleteDream } = useDreamsStore();
+  const { dreams, deleteDream, updateDreamDeepAnalysis } = useDreamsStore();
   const { setDreamContext } = useChatStore();
+  const { userContext } = useUserContextStore();
+  const [deepAnalysis, setDeepAnalysis] = useState<DeepAnalysis | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const dream = dreams.find((d) => d.id === id);
+
+  // Sync deep analysis from dream if available
+  if (dream?.deep_analysis && !deepAnalysis) {
+    setDeepAnalysis(dream.deep_analysis);
+  }
+
+  const handleGenerateDeepAnalysis = async () => {
+    if (!dream || isGenerating) return;
+
+    haptic.medium();
+    setIsGenerating(true);
+
+    try {
+      const result = await generateDeepAnalysis(
+        dream.id,
+        dream.cleaned_narrative,
+        dream.symbols,
+        dream.themes,
+        dream.figures,
+        dream.emotions,
+        userContext
+      );
+
+      if (result) {
+        setDeepAnalysis(result);
+        updateDreamDeepAnalysis(dream.id, result);
+        haptic.success();
+      } else {
+        haptic.error();
+        Alert.alert('Error', 'Failed to generate deep analysis. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to generate deep analysis:', error);
+      haptic.error();
+      Alert.alert('Error', 'Failed to generate deep analysis. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   if (!dream) {
     return (
@@ -342,6 +604,49 @@ export default function DreamDetailScreen() {
               </View>
             ))}
           </Section>
+        )}
+
+        {/* Deep Jungian Analysis - On-Demand Feature */}
+        {deepAnalysis ? (
+          <DeepAnalysisSection deepAnalysis={deepAnalysis} delay={750} />
+        ) : (
+          <Animated.View entering={FadeInDown.delay(750).duration(400).springify()}>
+            <Pressable
+              onPress={handleGenerateDeepAnalysis}
+              disabled={isGenerating}
+              style={styles.generateDeepAnalysisButton}
+            >
+              <GlassCard style={styles.generateDeepAnalysisCard} intensity="light">
+                {isGenerating ? (
+                  <View style={styles.generatingContent}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <View style={styles.generatingTextContainer}>
+                      <Text style={styles.generatingTitle}>Generating Deep Analysis...</Text>
+                      <Text style={styles.generatingSubtitle}>
+                        AI is performing psychological analysis
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.generateContent}>
+                    <LinearGradient
+                      colors={['#F59E0B', '#D97706']}
+                      style={styles.generateIcon}
+                    >
+                      <FontAwesome name="star" size={16} color="#fff" />
+                    </LinearGradient>
+                    <View style={styles.generateTextContainer}>
+                      <Text style={styles.generateTitle}>Generate Deep Analysis</Text>
+                      <Text style={styles.generateSubtitle}>
+                        Unlock Jungian psychological insights
+                      </Text>
+                    </View>
+                    <FontAwesome name="chevron-right" size={14} color={colors.textTertiary} />
+                  </View>
+                )}
+              </GlassCard>
+            </Pressable>
+          </Animated.View>
         )}
 
         {/* Raw transcript */}
@@ -718,5 +1023,242 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.negative,
+  },
+  // Deep Analysis styles
+  deepAnalysisCard: {
+    marginBottom: 16,
+    padding: 20,
+  },
+  deepAnalysisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 20,
+  },
+  deepAnalysisIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deepAnalysisHeaderText: {
+    flex: 1,
+  },
+  listenButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  listenButtonGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deepAnalysisTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  deepAnalysisSubtitle: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+  archetypeSection: {
+    marginBottom: 20,
+  },
+  archetypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 8,
+    marginBottom: 12,
+  },
+  archetypeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  confidenceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  confidenceText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  archetypeMeaning: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 24,
+    marginBottom: 12,
+  },
+  evidenceContainer: {
+    gap: 6,
+  },
+  evidenceItem: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    lineHeight: 20,
+    paddingLeft: 4,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  collapsibleTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  synthesisText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    lineHeight: 26,
+    marginBottom: 16,
+  },
+  compensatorySection: {
+    backgroundColor: 'rgba(79, 209, 197, 0.08)',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  compensatoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  compensatoryTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  compensatoryText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  amplificationsContainer: {
+    gap: 16,
+    marginBottom: 16,
+  },
+  amplificationItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    paddingLeft: 14,
+  },
+  amplificationSymbol: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 6,
+  },
+  amplificationMythological: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: 6,
+  },
+  amplificationPersonal: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  amplificationPersonalLabel: {
+    fontWeight: '600',
+    fontStyle: 'normal',
+    color: colors.textSecondary,
+  },
+  questionsContainer: {
+    gap: 14,
+    marginBottom: 8,
+  },
+  questionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  questionNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  questionNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  questionText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 22,
+  },
+  // Generate Deep Analysis Button
+  generateDeepAnalysisButton: {
+    marginBottom: 16,
+  },
+  generateDeepAnalysisCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  generateContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  generateIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  generateTextContainer: {
+    flex: 1,
+  },
+  generateTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  generateSubtitle: {
+    fontSize: 13,
+    color: colors.textTertiary,
+  },
+  generatingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  generatingTextContainer: {
+    flex: 1,
+  },
+  generatingTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: 2,
+  },
+  generatingSubtitle: {
+    fontSize: 13,
+    color: colors.textTertiary,
   },
 });

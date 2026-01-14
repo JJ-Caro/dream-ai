@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { analyzeDreamAudio } from '@/lib/gemini';
 import { deleteAudioFile } from '@/lib/audio';
 import { addPendingDream, removePendingDream, getPendingDreams } from '@/lib/storage';
-import type { Dream, DreamInsert } from '@/types/dream';
+import { useUserContextStore } from '@/stores/userContextStore';
+import type { Dream, DreamInsert, DeepAnalysis } from '@/types/dream';
 
 interface DreamsState {
   dreams: Dream[];
@@ -15,6 +16,7 @@ interface DreamsState {
   processDream: (audioUri: string, durationSeconds: number) => Promise<Dream>;
   deleteDream: (id: string) => Promise<void>;
   syncPendingDreams: () => Promise<void>;
+  updateDreamDeepAnalysis: (dreamId: string, deepAnalysis: DeepAnalysis) => void;
 }
 
 export const useDreamsStore = create<DreamsState>((set, get) => ({
@@ -56,8 +58,11 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
         durationSeconds,
       });
 
-      // Send to Gemini for analysis
-      const analysis = await analyzeDreamAudio(audioUri);
+      // Get user context for personalized analysis
+      const userContext = useUserContextStore.getState().userContext;
+
+      // Send to Gemini for analysis (with user context if available)
+      const analysis = await analyzeDreamAudio(audioUri, userContext);
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -66,7 +71,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
       // Calculate word count
       const wordCount = analysis.raw_transcript.split(/\s+/).filter(Boolean).length;
 
-      // Prepare dream data
+      // Prepare dream data with quick archetype from Flash model
       const dreamData: DreamInsert = {
         user_id: user.id,
         recorded_at: recordedAt,
@@ -80,6 +85,7 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
         themes: analysis.themes,
         symbols: analysis.symbols,
         overall_emotional_tone: analysis.overall_emotional_tone,
+        quick_archetype: analysis.quick_archetype,
         duration_seconds: durationSeconds,
         word_count: wordCount,
       };
@@ -144,5 +150,15 @@ export const useDreamsStore = create<DreamsState>((set, get) => ({
         console.error('Failed to sync pending dream:', dream.id, error);
       }
     }
+  },
+
+  updateDreamDeepAnalysis: (dreamId: string, deepAnalysis: DeepAnalysis) => {
+    set(state => ({
+      dreams: state.dreams.map(dream =>
+        dream.id === dreamId
+          ? { ...dream, deep_analysis: deepAnalysis }
+          : dream
+      ),
+    }));
   },
 }));

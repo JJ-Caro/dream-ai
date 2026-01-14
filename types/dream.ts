@@ -35,6 +35,91 @@ export interface DreamSymbol {
   possible_meanings: string[];
 }
 
+// Jungian Psychology Types
+export type JungianArchetype = 'shadow' | 'anima_animus' | 'self' | 'persona' | 'hero';
+
+// Quick archetype from Flash model (fast initial analysis)
+export interface QuickArchetype {
+  likely_archetype: JungianArchetype;
+  confidence: number;
+  brief_reason: string;
+}
+
+// Legacy format for backward compatibility
+export interface SecondaryArchetype {
+  type: JungianArchetype;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface JungianAnalysis {
+  primary_archetype: JungianArchetype;
+  confidence: number;
+  evidence: string[];
+  interpretation: string;
+  secondary_archetypes: SecondaryArchetype[];
+  shadow_elements: string[];
+  collective_unconscious_symbols: string[];
+}
+
+// Deep Analysis Types (from Pro model)
+export interface SymbolAmplification {
+  symbol: string;
+  mythological: string;
+  personal_connection: string;
+}
+
+export interface DeepArchetype {
+  type: JungianArchetype;
+  confidence: number;
+  evidence: string[];
+  psychological_meaning?: string;
+}
+
+export interface DeepAnalysis {
+  amplifications: SymbolAmplification[];
+  compensatory_dynamic: string;
+  primary_archetype: DeepArchetype;
+  secondary_archetypes: DeepArchetype[];
+  synthesis: string;
+  questions_for_reflection: string[];
+  generated_at?: string;
+}
+
+// Weekly Report Types
+export interface WeeklyReport {
+  id: string;
+  user_id: string;
+  week_start: string;
+  week_end: string;
+  dream_count: number;
+  top_themes: { theme: string; count: number }[];
+  emotional_journey: {
+    dominant_emotions: string[];
+    trend: 'ascending' | 'descending' | 'stable' | 'fluctuating';
+    narrative: string;
+  };
+  key_symbols: { symbol: string; count: number }[];
+  jungian_summary: {
+    dominant_archetypes: { archetype: string; count: number }[];
+    shadow_work_themes: string[];
+  };
+  ai_insight: string;
+  created_at: string;
+}
+
+export interface WeeklyReportInsert {
+  user_id: string;
+  week_start: string;
+  week_end: string;
+  dream_count: number;
+  top_themes: { theme: string; count: number }[];
+  emotional_journey: WeeklyReport['emotional_journey'];
+  key_symbols: { symbol: string; count: number }[];
+  jungian_summary: WeeklyReport['jungian_summary'];
+  ai_insight: string;
+}
+
 export interface Dream {
   id: string;
   user_id: string;
@@ -50,6 +135,10 @@ export interface Dream {
   themes: string[];
   symbols: DreamSymbol[];
   overall_emotional_tone: string;
+  quick_archetype?: QuickArchetype;
+  deep_analysis?: DeepAnalysis;
+  // Legacy field for backward compatibility
+  jungian_analysis?: JungianAnalysis;
   embedding?: number[];
   duration_seconds?: number;
   word_count?: number;
@@ -68,6 +157,8 @@ export interface DreamInsert {
   themes: string[];
   symbols: DreamSymbol[];
   overall_emotional_tone: string;
+  quick_archetype?: QuickArchetype;
+  deep_analysis?: DeepAnalysis;
   duration_seconds?: number;
   word_count?: number;
 }
@@ -83,6 +174,7 @@ export interface GeminiDreamResponse {
   themes: string[];
   symbols: DreamSymbol[];
   overall_emotional_tone: string;
+  quick_archetype: QuickArchetype;
 }
 
 export interface RecordingState {

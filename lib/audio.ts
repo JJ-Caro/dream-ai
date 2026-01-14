@@ -1,5 +1,5 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Recording settings optimized for voice (M4A/AAC, 64kbps mono)
 const RECORDING_OPTIONS: Audio.RecordingOptions = {
@@ -27,18 +27,22 @@ const RECORDING_OPTIONS: Audio.RecordingOptions = {
 };
 
 let recording: Audio.Recording | null = null;
+let isRecordingActive = false;
 
 export async function startRecording(): Promise<void> {
+  // Prevent multiple concurrent recordings
+  if (isRecordingActive) {
+    console.warn('Recording already in progress');
+    return;
+  }
+
   try {
     // Clean up any existing recording first
     if (recording) {
       try {
-        const status = await recording.getStatusAsync();
-        if (status.isRecording) {
-          await recording.stopAndUnloadAsync();
-        }
+        await recording.stopAndUnloadAsync();
       } catch {
-        // Ignore errors when cleaning up
+        // Ignore cleanup errors
       }
       recording = null;
     }
@@ -56,6 +60,7 @@ export async function startRecording(): Promise<void> {
     });
 
     // Create and start recording
+    isRecordingActive = true;
     const { recording: newRecording } = await Audio.Recording.createAsync(
       RECORDING_OPTIONS
     );
@@ -63,45 +68,75 @@ export async function startRecording(): Promise<void> {
   } catch (error) {
     console.error('Failed to start recording:', error);
     recording = null;
+    isRecordingActive = false;
     throw error;
   }
 }
 
 export async function stopRecording(): Promise<string | null> {
-  if (!recording) {
+  // Capture current recording reference
+  const currentRecording = recording;
+  recording = null;
+  isRecordingActive = false;
+
+  if (!currentRecording) {
     return null;
   }
 
+  let uri: string | null = null;
+
   try {
-    const status = await recording.getStatusAsync();
-    if (status.isRecording) {
-      await recording.stopAndUnloadAsync();
+    // Get URI before stopping (it may be cleared after unload)
+    uri = currentRecording.getURI();
+
+    // Try to stop and unload
+    try {
+      const status = await currentRecording.getStatusAsync();
+      if (status?.isRecording) {
+        await currentRecording.stopAndUnloadAsync();
+      }
+    } catch {
+      // Recording may already be stopped, try to unload anyway
+      try {
+        await currentRecording.stopAndUnloadAsync();
+      } catch {
+        // Ignore - recording is already unloaded
+      }
     }
 
     // Reset audio mode
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-    });
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+    } catch {
+      // Ignore audio mode errors
+    }
 
-    const uri = recording.getURI();
-    recording = null;
     return uri;
   } catch (error) {
     console.error('Failed to stop recording:', error);
-    recording = null;
-    throw error;
+    return uri; // Return URI if we got it, even if stop failed
   }
 }
 
 export async function cancelRecording(): Promise<void> {
-  if (!recording) {
+  const currentRecording = recording;
+  recording = null;
+  isRecordingActive = false;
+
+  if (!currentRecording) {
     return;
   }
 
   try {
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    recording = null;
+    const uri = currentRecording.getURI();
+
+    try {
+      await currentRecording.stopAndUnloadAsync();
+    } catch {
+      // Ignore stop errors
+    }
 
     // Delete the cancelled recording
     if (uri) {
@@ -109,7 +144,6 @@ export async function cancelRecording(): Promise<void> {
     }
   } catch (error) {
     console.error('Failed to cancel recording:', error);
-    recording = null;
   }
 }
 
@@ -125,11 +159,9 @@ export async function getRecordingStatus(): Promise<Audio.RecordingStatus | null
 }
 
 export async function deleteAudioFile(uri: string): Promise<void> {
+  if (!uri) return;
   try {
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (fileInfo.exists) {
-      await FileSystem.deleteAsync(uri, { idempotent: true });
-    }
+    await FileSystem.deleteAsync(uri, { idempotent: true });
   } catch (error) {
     console.error('Failed to delete audio file:', error);
   }
@@ -140,9 +172,10 @@ export function getAudioDirectory(): string {
 }
 
 export async function ensureAudioDirectory(): Promise<void> {
-  const dirPath = getAudioDirectory();
-  const dirInfo = await FileSystem.getInfoAsync(dirPath);
-  if (!dirInfo.exists) {
+  try {
+    const dirPath = getAudioDirectory();
     await FileSystem.makeDirectoryAsync(dirPath, { intermediates: true });
+  } catch {
+    // Directory likely already exists, ignore
   }
 }

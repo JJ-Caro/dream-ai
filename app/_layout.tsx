@@ -7,8 +7,10 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/constants/colors';
+import { reregisterReminderIfNeeded } from '@/lib/notifications';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -43,6 +45,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     initialize();
+    // Re-register notification reminder if one was previously scheduled
+    reregisterReminderIfNeeded();
   }, []);
 
   useEffect(() => {
@@ -60,31 +64,33 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={DreamTheme}>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="dream/[id]"
-          options={{
-            headerShown: true,
-            headerTitle: 'Dream',
-            headerStyle: { backgroundColor: colors.surface },
-            headerTintColor: colors.textPrimary,
-            presentation: 'card',
-          }}
-        />
-        <Stack.Screen
-          name="chat"
-          options={{
-            headerShown: true,
-            headerTitle: 'Chat',
-            headerStyle: { backgroundColor: colors.surface },
-            headerTintColor: colors.textPrimary,
-            presentation: 'modal',
-          }}
-        />
-      </Stack>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={DreamTheme}>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="dream/[id]"
+            options={{
+              headerShown: true,
+              headerTitle: 'Dream',
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.textPrimary,
+              presentation: 'card',
+            }}
+          />
+          <Stack.Screen
+            name="chat"
+            options={{
+              headerShown: true,
+              headerTitle: 'Chat',
+              headerStyle: { backgroundColor: colors.surface },
+              headerTintColor: colors.textPrimary,
+              presentation: 'modal',
+            }}
+          />
+        </Stack>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

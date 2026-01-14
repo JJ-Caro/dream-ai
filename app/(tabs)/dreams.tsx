@@ -215,6 +215,16 @@ function DreamCard({
                     <Text style={styles.toneText}>{dream.overall_emotional_tone}</Text>
                   </>
                 )}
+                {/* Deep Analysis indicator */}
+                {dream.deep_analysis && (
+                  <>
+                    <View style={styles.statDot} />
+                    <View style={styles.deepAnalysisBadge}>
+                      <FontAwesome name="star" size={10} color="#F59E0B" />
+                      <Text style={styles.deepAnalysisBadgeText}>Deep Analysis</Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           </View>
@@ -619,5 +629,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  deepAnalysisBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  deepAnalysisBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F59E0B',
   },
 });

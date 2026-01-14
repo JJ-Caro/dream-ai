@@ -1,14 +1,24 @@
-import { View, Text, Pressable, Alert, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Alert, ScrollView, StyleSheet, Modal, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useDreamsStore } from '@/stores/dreamsStore';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/colors';
 import { DreamyBackground, GlassCard } from '@/components/ui';
 import { haptic } from '@/lib/haptics';
+import {
+  requestNotificationPermissions,
+  scheduleDreamReminder,
+  cancelDreamReminder,
+  getReminderSettings,
+  formatReminderTime,
+  type ReminderSettings,
+} from '@/lib/notifications';
 
 function SettingsItem({
   icon,
@@ -100,6 +110,106 @@ function StatItem({ value, label, color }: { value: number; label: string; color
 export default function SettingsScreen() {
   const { user, signOut } = useAuthStore();
   const { dreams } = useDreamsStore();
+
+  // Reminder state
+  const [reminderSettings, setReminderSettings] = useState<ReminderSettings | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedTime, setSelectedTime] = useState(new Date());
+
+  // Load reminder settings on mount
+  useEffect(() => {
+    loadReminderSettings();
+  }, []);
+
+  const loadReminderSettings = async () => {
+    const settings = await getReminderSettings();
+    setReminderSettings(settings);
+    if (settings) {
+      const date = new Date();
+      date.setHours(settings.hour, settings.minute, 0, 0);
+      setSelectedTime(date);
+    } else {
+      // Default to 7:00 AM
+      const date = new Date();
+      date.setHours(7, 0, 0, 0);
+      setSelectedTime(date);
+    }
+  };
+
+  const handleReminderPress = () => {
+    haptic.light();
+    if (reminderSettings?.enabled) {
+      // Show options to edit or disable
+      Alert.alert(
+        'Dream Reminder',
+        `Currently set for ${formatReminderTime(reminderSettings.hour, reminderSettings.minute)}`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Change Time',
+            onPress: () => setShowTimePicker(true),
+          },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: handleDisableReminder,
+          },
+        ]
+      );
+    } else {
+      setShowTimePicker(true);
+    }
+  };
+
+  const handleTimeChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+    if (date) {
+      setSelectedTime(date);
+    }
+  };
+
+  const handleConfirmTime = async () => {
+    setShowTimePicker(false);
+    haptic.medium();
+
+    // Request permissions first
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      Alert.alert(
+        'Permission Required',
+        'Please enable notifications in your device settings to receive dream reminders.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Schedule the reminder
+    const hour = selectedTime.getHours();
+    const minute = selectedTime.getMinutes();
+    const notificationId = await scheduleDreamReminder(hour, minute);
+
+    if (notificationId) {
+      setReminderSettings({ enabled: true, hour, minute });
+      haptic.success();
+      Alert.alert(
+        'Reminder Set',
+        `You'll receive a dream reminder daily at ${formatReminderTime(hour, minute)}`,
+        [{ text: 'OK' }]
+      );
+    } else {
+      haptic.error();
+      Alert.alert('Error', 'Failed to schedule reminder. Please try again.');
+    }
+  };
+
+  const handleDisableReminder = async () => {
+    haptic.medium();
+    await cancelDreamReminder();
+    setReminderSettings(null);
+    Alert.alert('Reminder Disabled', 'Your daily dream reminder has been disabled.');
+  };
 
   const handleSignOut = () => {
     haptic.warning();
@@ -227,14 +337,31 @@ export default function SettingsScreen() {
             </GlassCard>
           </Animated.View>
 
+          {/* Notifications Section */}
+          <SettingsSection title="Notifications" delay={250}>
+            <SettingsItem
+              icon="bell"
+              title={reminderSettings?.enabled
+                ? `Dream Reminder: ${formatReminderTime(reminderSettings.hour, reminderSettings.minute)}`
+                : "Schedule Dream Reminder"
+              }
+              subtitle={reminderSettings?.enabled
+                ? "Tap to change or disable"
+                : "Get daily reminders to log your dreams"
+              }
+              onPress={handleReminderPress}
+              delay={300}
+            />
+          </SettingsSection>
+
           {/* Data Section */}
-          <SettingsSection title="Data" delay={300}>
+          <SettingsSection title="Data" delay={350}>
             <SettingsItem
               icon="download"
               title="Export Data"
               subtitle="Download your dreams as JSON"
               onPress={handleExportData}
-              delay={350}
+              delay={400}
             />
             <View style={styles.settingsDivider} />
             <SettingsItem
@@ -243,7 +370,7 @@ export default function SettingsScreen() {
               subtitle="Permanently delete all dreams"
               onPress={handleDeleteAllData}
               danger
-              delay={400}
+              delay={450}
             />
           </SettingsSection>
 
@@ -285,6 +412,57 @@ export default function SettingsScreen() {
             </View>
           </Animated.View>
         </ScrollView>
+
+        {/* Time Picker Modal */}
+        <Modal
+          visible={showTimePicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowTimePicker(false)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowTimePicker(false)}
+          >
+            <Pressable style={styles.modalContent} onPress={e => e.stopPropagation()}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Set Reminder Time</Text>
+                <Text style={styles.modalSubtitle}>
+                  When should we remind you to log your dreams?
+                </Text>
+              </View>
+
+              <View style={styles.timePickerContainer}>
+                <DateTimePicker
+                  value={selectedTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                  textColor={colors.textPrimary}
+                  themeVariant="dark"
+                  style={styles.timePicker}
+                />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <Pressable
+                  onPress={() => setShowTimePicker(false)}
+                  style={styles.modalCancelButton}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={handleConfirmTime} style={styles.modalConfirmButton}>
+                  <LinearGradient
+                    colors={colors.gradients.recordButton}
+                    style={styles.modalConfirmGradient}
+                  >
+                    <Text style={styles.modalConfirmText}>Set Reminder</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </SafeAreaView>
     </DreamyBackground>
   );
@@ -457,5 +635,75 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  timePickerContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  timePicker: {
+    width: 280,
+    height: 180,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  modalConfirmButton: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  modalConfirmGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.textPrimary,
   },
 });

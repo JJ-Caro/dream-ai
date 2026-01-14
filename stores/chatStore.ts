@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { chatAboutDreams } from '@/lib/gemini';
+import { useUserContextStore } from '@/stores/userContextStore';
 import type { ChatMessage, Dream } from '@/types/dream';
 
 interface ChatState {
@@ -45,10 +46,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     try {
-      // Get AI response
+      // Get user context for personalized chat
+      const userContext = useUserContextStore.getState().userContext;
+
+      // Get AI response (with user context if available)
       const response = await chatAboutDreams(
         [...messages, userMessage],
-        dreamContext
+        dreamContext,
+        userContext
       );
 
       // Add assistant message
