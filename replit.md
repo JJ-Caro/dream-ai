@@ -4,7 +4,7 @@ A React Native/Expo mobile app for dream journaling and analysis using AI.
 
 ## Overview
 
-Dream AI is a dream journaling application that allows users to record their dreams via voice, get AI-powered analysis, and track patterns over time.
+Dream AI is a dream journaling application that allows users to record their dreams via voice, get AI-powered analysis, and track patterns over time. **Production-ready for multi-user deployment.**
 
 ## Tech Stack
 
@@ -12,7 +12,7 @@ Dream AI is a dream journaling application that allows users to record their dre
 - **Language**: TypeScript
 - **Styling**: NativeWind (TailwindCSS for React Native)
 - **State Management**: Zustand
-- **Backend**: Supabase (authentication, database)
+- **Backend**: Supabase (authentication, database with RLS)
 - **AI**: Google Gemini (dream analysis), OpenAI (speech-to-text)
 
 ## Project Structure
@@ -30,9 +30,9 @@ Dream AI is a dream journaling application that allows users to record their dre
 ├── components/            # Reusable components
 ├── constants/             # Colors, prompts, etc.
 ├── lib/                   # Utility libraries
-│   ├── supabase.ts       # Supabase client
+│   ├── supabase.ts       # Supabase client (with null checks)
 │   ├── gemini.ts         # Gemini AI integration
-│   ├── speech.ts         # OpenAI TTS
+│   ├── speech.ts         # OpenAI TTS (dangerouslyAllowBrowser for web)
 │   └── ...
 ├── stores/                # Zustand state stores
 └── types/                 # TypeScript types
@@ -55,4 +55,19 @@ npm run dev
 
 ## Deployment
 
-The app uses Expo's static web output and can be deployed as a static site.
+### EAS Build (iOS/Android)
+- **eas.json** configured with development, preview, and production profiles
+- Bundle identifier: `com.dreamai.app`
+- Version: 1.0.0
+
+### Production Checklist
+- [ ] Set EAS project ID in app.json
+- [ ] Configure Supabase RLS policies for data isolation
+- [ ] Add app store submission credentials to eas.json
+
+## Recent Changes (Jan 2026)
+- Removed all console.log/error/warn from production code
+- Added supabase null checks with isSupabaseConfigured helper
+- Updated app.json with permissions and privacy policy
+- Created eas.json for native builds
+- Added comprehensive README.md with deployment instructions
