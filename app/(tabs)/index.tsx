@@ -36,6 +36,31 @@ const STREAK_DISMISSAL_KEY = 'streak_card_dismissed_date';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const RECORD_BUTTON_SIZE = 120;
 
+// Bouncing dot component for processing indicator
+function BouncingDot({ delay }: { delay: number }) {
+  const translateY = useSharedValue(0);
+
+  useEffect(() => {
+    translateY.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(-6, { duration: 300, easing: Easing.out(Easing.ease) }),
+          withTiming(0, { duration: 300, easing: Easing.in(Easing.ease) })
+        ),
+        -1,
+        false
+      )
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return <Animated.View style={[styles.processingDot, animatedStyle]} />;
+}
+
 // Ripple ring component
 function RippleRing({ delay, isRecording }: { delay: number; isRecording: boolean }) {
   const scale = useSharedValue(1);
@@ -424,15 +449,11 @@ export default function HomeScreen() {
                   ]}
                 >
                   {isProcessing ? (
-                    <View style={styles.processingDots}>
-                      {[0, 1, 2].map((i) => (
-                        <Animated.View
-                          key={i}
-                          entering={FadeIn.delay(i * 200)}
-                          style={styles.processingDot}
-                        />
-                      ))}
-                    </View>
+                    <Animated.View entering={FadeIn.duration(200)} style={styles.processingDots}>
+                      <BouncingDot delay={0} />
+                      <BouncingDot delay={100} />
+                      <BouncingDot delay={200} />
+                    </Animated.View>
                   ) : (
                     <View
                       style={[
