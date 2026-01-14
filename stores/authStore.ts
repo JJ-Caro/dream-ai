@@ -12,7 +12,9 @@ interface AuthState {
   initialize: () => Promise<void>;
   signInAnonymously: () => Promise<void>;
   signInWithEmail: (email: string) => Promise<void>;
+  linkEmailToAccount: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  isAnonymous: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -96,5 +98,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } finally {
       set({ isLoading: false });
     }
+  },
+
+  linkEmailToAccount: async (email: string) => {
+    if (!supabase) throw new Error('Supabase not configured');
+    set({ isLoading: true });
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email,
+      });
+      if (error) throw error;
+    } catch (error) {
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  isAnonymous: () => {
+    const { user } = get();
+    if (!user) return false;
+    return user.is_anonymous === true || (!user.email && !user.phone);
   },
 }));

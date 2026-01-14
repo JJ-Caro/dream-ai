@@ -108,8 +108,9 @@ function StatItem({ value, label, color }: { value: number; label: string; color
 }
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, isAnonymous, linkEmailToAccount, isLoading } = useAuthStore();
   const { dreams } = useDreamsStore();
+  const isAnon = isAnonymous();
 
   // Reminder state
   const [reminderSettings, setReminderSettings] = useState<ReminderSettings | null>(null);
@@ -209,6 +210,46 @@ export default function SettingsScreen() {
     await cancelDreamReminder();
     setReminderSettings(null);
     Alert.alert('Reminder Disabled', 'Your daily dream reminder has been disabled.');
+  };
+
+  const handleLinkEmail = () => {
+    haptic.light();
+    Alert.prompt(
+      'Link Email to Account',
+      'Enter your email address to save your dreams to your account. We\'ll send you a confirmation link.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send Link',
+          onPress: async (email?: string) => {
+            if (!email?.trim()) {
+              Alert.alert('Error', 'Please enter an email address.');
+              return;
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+              Alert.alert('Error', 'Please enter a valid email address.');
+              return;
+            }
+            try {
+              await linkEmailToAccount(email.trim());
+              haptic.success();
+              Alert.alert(
+                'Check Your Email',
+                'We sent a confirmation link to your email. Click it to link your account.',
+                [{ text: 'OK' }]
+              );
+            } catch (error: any) {
+              haptic.error();
+              Alert.alert('Error', error.message || 'Failed to link email. Please try again.');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '',
+      'email-address'
+    );
   };
 
   const handleSignOut = () => {
@@ -314,6 +355,18 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
+            {isAnon && (
+              <>
+                <View style={styles.settingsDivider} />
+                <SettingsItem
+                  icon="envelope"
+                  title="Link Email to Account"
+                  subtitle="Save your dreams to your account"
+                  onPress={handleLinkEmail}
+                  delay={125}
+                />
+              </>
+            )}
             <View style={styles.settingsDivider} />
             <SettingsItem
               icon="sign-out"
