@@ -536,13 +536,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerContent: {
-    gap: 4,
+    // Using marginBottom instead of gap for cross-platform compatibility
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.5,
+    marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
@@ -633,12 +634,13 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     paddingVertical: 8,
   },
   statItem: {
     alignItems: 'center',
     flex: 1,
+    paddingHorizontal: 8,
   },
   statValue: {
     fontSize: 32,
@@ -682,12 +684,12 @@ const styles = StyleSheet.create({
   },
   footerDots: {
     flexDirection: 'row',
-    gap: 8,
   },
   footerDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
+    marginHorizontal: 4,
   },
   // Modal styles
   modalOverlay: {
@@ -699,12 +701,23 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: Platform.OS === 'web' ? 400 : 340,
     backgroundColor: colors.surface,
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   modalHeader: {
     alignItems: 'center',
@@ -723,15 +736,16 @@ const styles = StyleSheet.create({
   },
   timePickerContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
+    minHeight: 180,
   },
   timePicker: {
-    width: 280,
-    height: 180,
+    width: Platform.OS === 'ios' ? 280 : '100%',
+    height: Platform.OS === 'ios' ? 180 : 200,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
   },
   modalCancelButton: {
     flex: 1,
@@ -739,6 +753,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
+    marginRight: 6,
   },
   modalCancelText: {
     fontSize: 16,
@@ -749,6 +764,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 14,
     overflow: 'hidden',
+    marginLeft: 6,
   },
   modalConfirmGradient: {
     paddingVertical: 14,
