@@ -55,7 +55,7 @@ Return ONLY valid JSON with no markdown formatting, no code blocks, no explanati
   ],
   "overall_emotional_tone": "single phrase summarizing the dream's emotional quality",
   "quick_archetype": {
-    "likely_archetype": "shadow|anima_animus|self|persona|hero",
+    "likely_archetype": "shadow|anima_animus|self|persona|hero|mother|father|child|trickster|sage|great_mother|wise_old_man",
     "confidence": 0.1-1.0,
     "brief_reason": "one sentence explaining why"
   }
@@ -64,9 +64,16 @@ Return ONLY valid JSON with no markdown formatting, no code blocks, no explanati
 ARCHETYPE QUICK REFERENCE:
 - SHADOW: Antagonists, monsters, being chased, fear, dark places, conflict
 - HERO: Quests, journeys, overcoming obstacles, finding treasures, transformation
-- ANIMA/ANIMUS: Mysterious opposite-gender figures, romantic encounters, guides
+- ANIMA/ANIMUS: Mysterious opposite-gender figures, romantic encounters, soul guides
 - PERSONA: Clothing focus, public situations, being watched/judged, performances
-- SELF: Mandalas, circles, wise elders, divine imagery, feelings of wholeness
+- SELF: Mandalas, circles, quaternities, divine imagery, feelings of wholeness
+- MOTHER: Nurturing figures, homes, food, comfort OR devouring, smothering, controlling
+- FATHER: Authority figures, rules, structure, protection OR tyranny, judgment, absence
+- CHILD: Children, babies, innocence, play, wonder, new beginnings, vulnerability
+- TRICKSTER: Jesters, animals (especially coyote/fox/raven), pranks, chaos, shape-shifters
+- SAGE: Wise old figures, teachers, mentors, books, libraries, profound knowledge
+- GREAT_MOTHER: Earth, nature, caves, oceans, primordial feminine, creation/destruction
+- WISE_OLD_MAN: Prophets, wizards, hermits, spiritual guides, archetypal masculine wisdom
 
 RULES:
 - Be accurate in transcription
@@ -131,6 +138,34 @@ Identify which Jungian archetypes are constellated in this dream:
 - Key question: What transformation is being called for in your life?
 - Hero's journey: Departure → Initiation → Return
 
+**MOTHER** - The nurturing/devouring feminine
+- Evidence: Mother figures, homes, kitchens, feeding, comfort OR smothering, controlling, suffocating
+- Positive: Nurturing, protection, unconditional love, fertility
+- Negative: Devouring, overprotection, inability to let go
+- Key question: What is your relationship to nurturing - giving or receiving?
+
+**FATHER** - The ordering/tyrannical masculine  
+- Evidence: Father figures, authority, rules, judgment, protection OR rigidity, absence, tyranny
+- Positive: Structure, guidance, protection, provision
+- Negative: Domination, harsh judgment, emotional absence
+- Key question: What is your relationship to authority and structure?
+
+**CHILD** - The archetype of beginnings and potential
+- Evidence: Children, babies, playfulness, innocence, wonder, vulnerability
+- Divine Child: Promise of renewal, future potential
+- Wounded Child: Unhealed childhood experiences seeking integration
+- Key question: What part of you needs to be born or nurtured?
+
+**TRICKSTER** - The boundary-breaker and chaos-bringer
+- Evidence: Jesters, animals (coyote, fox, raven), pranks, impossible situations, shape-shifting
+- Function: Disrupts the status quo, reveals hidden truths through humor/chaos
+- Key question: What rigid structure in your life needs disrupting?
+
+**SAGE** - The archetype of wisdom and knowledge
+- Evidence: Wise old figures, teachers, books, libraries, profound insights, meditation
+- Function: Offers wisdom, shows the path, represents higher knowledge
+- Key question: What wisdom are you being called to embody or seek?
+
 ## STEP 5: SYNTHESIS
 Weave the analysis into a coherent narrative that:
 - Presents insights as possibilities, not certainties
@@ -151,7 +186,7 @@ Return ONLY valid JSON in this format:
   ],
   "compensatory_dynamic": "What the psyche appears to be compensating for or bringing into balance",
   "primary_archetype": {
-    "type": "shadow|anima_animus|self|persona|hero",
+    "type": "shadow|anima_animus|self|persona|hero|mother|father|child|trickster|sage|great_mother|wise_old_man",
     "confidence": 0.0-1.0,
     "evidence": ["specific dream elements supporting this identification"],
     "psychological_meaning": "2-3 sentences on what this archetype's presence suggests about the dreamer's current psychological situation"

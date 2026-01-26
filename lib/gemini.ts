@@ -269,8 +269,19 @@ function normalizeArchetype(archetype: string): JungianArchetype {
   if (archetype === 'anima' || archetype === 'animus') {
     return 'anima_animus';
   }
-  // Validate it's a known archetype
-  const validArchetypes: JungianArchetype[] = ['shadow', 'anima_animus', 'self', 'persona', 'hero'];
+  // Handle alternate spellings
+  if (archetype === 'wise_old_man' || archetype === 'wiseoldman' || archetype === 'wise old man') {
+    return 'wise_old_man';
+  }
+  if (archetype === 'great_mother' || archetype === 'greatmother' || archetype === 'great mother') {
+    return 'great_mother';
+  }
+  // Validate it's a known archetype (including new ones)
+  const validArchetypes: JungianArchetype[] = [
+    'shadow', 'anima_animus', 'self', 'persona', 'hero',
+    'mother', 'father', 'child', 'trickster', 'sage',
+    'great_mother', 'wise_old_man'
+  ];
   if (validArchetypes.includes(archetype as JungianArchetype)) {
     return archetype as JungianArchetype;
   }

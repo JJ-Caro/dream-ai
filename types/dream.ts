@@ -36,7 +36,125 @@ export interface DreamSymbol {
 }
 
 // Jungian Psychology Types
-export type JungianArchetype = 'shadow' | 'anima_animus' | 'self' | 'persona' | 'hero';
+// Extended archetype system including the major Jungian archetypes
+export type JungianArchetype = 
+  | 'shadow'       // Repressed aspects of self
+  | 'anima_animus' // Inner feminine/masculine
+  | 'self'         // Wholeness and integration
+  | 'persona'      // Social mask
+  | 'hero'         // Transformation through trials
+  | 'mother'       // Nurturing, life-giving, devouring
+  | 'father'       // Authority, order, protection
+  | 'child'        // Innocence, potential, rebirth
+  | 'trickster'    // Chaos, humor, boundary-breaking
+  | 'sage'         // Wisdom, knowledge, guidance
+  | 'great_mother' // Archetypal feminine (creation/destruction)
+  | 'wise_old_man';// Archetypal masculine wisdom
+
+// Personal symbol dictionary entry
+export interface PersonalSymbol {
+  id: string;
+  user_id: string;
+  symbol: string;
+  personal_meaning: string;
+  first_appeared: string; // ISO date
+  occurrences: number;
+  associated_emotions: string[];
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Dream incubation intention
+export interface DreamIncubation {
+  id: string;
+  user_id: string;
+  question: string;
+  intention: string;
+  set_at: string;
+  active: boolean;
+  resolved_at?: string;
+  resolution_notes?: string;
+  linked_dream_ids: string[];
+}
+
+// Synchronicity entry
+export interface Synchronicity {
+  id: string;
+  user_id: string;
+  dream_id?: string;
+  description: string;
+  waking_event: string;
+  dream_connection: string;
+  significance: 1 | 2 | 3 | 4 | 5;
+  occurred_at: string;
+  created_at: string;
+}
+
+// Lucid dreaming tools
+export interface RealityCheck {
+  id: string;
+  type: 'hands' | 'time' | 'text' | 'breathing' | 'mirror' | 'light_switch' | 'custom';
+  custom_description?: string;
+  reminder_times: string[]; // HH:MM format
+  enabled: boolean;
+}
+
+export interface DreamSign {
+  id: string;
+  user_id: string;
+  description: string;
+  category: 'character' | 'location' | 'action' | 'object' | 'emotion';
+  occurrences: number;
+  first_seen: string;
+  dreams: string[]; // dream IDs
+}
+
+// Sleep data integration
+export interface SleepData {
+  id: string;
+  user_id: string;
+  date: string;
+  total_sleep_minutes: number;
+  deep_sleep_minutes?: number;
+  rem_sleep_minutes?: number;
+  awakenings?: number;
+  sleep_quality?: number; // 1-100
+  source: 'healthkit' | 'google_fit' | 'manual';
+  linked_dream_ids: string[];
+}
+
+// Community sharing
+export interface SharedDream {
+  id: string;
+  user_id: string;
+  dream_id: string;
+  anonymous: boolean;
+  display_name?: string;
+  narrative: string;
+  themes: string[];
+  archetypes: JungianArchetype[];
+  likes: number;
+  comments_count: number;
+  created_at: string;
+}
+
+// Active imagination session
+export interface ActiveImaginationSession {
+  id: string;
+  user_id: string;
+  dream_id?: string;
+  figure_name: string;
+  figure_description: string;
+  dialogue: Array<{
+    speaker: 'self' | 'figure';
+    message: string;
+    timestamp: string;
+  }>;
+  insights: string[];
+  started_at: string;
+  ended_at?: string;
+}
 
 // Quick archetype from Flash model (fast initial analysis)
 export interface QuickArchetype {
