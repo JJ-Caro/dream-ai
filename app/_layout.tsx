@@ -11,6 +11,7 @@ import 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/colors';
 import { reregisterReminderIfNeeded } from '@/lib/notifications';
@@ -122,20 +123,32 @@ function useProtectedRoute(user: any, isInitialized: boolean) {
   const segments = useSegments();
   const router = useRouter();
   const [hasNavigated, setHasNavigated] = useState(false);
+  const hasCompletedOnboarding = useOnboardingStore(state => state.hasCompletedOnboarding);
 
   useEffect(() => {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
 
     if (!user && !inAuthGroup) {
+      // Not logged in, go to auth
       setHasNavigated(true);
       setTimeout(() => router.replace('/(auth)/login'), 0);
     } else if (user && inAuthGroup) {
+      // Logged in, check if onboarding needed
       setHasNavigated(true);
-      setTimeout(() => router.replace('/(tabs)'), 0);
+      if (!hasCompletedOnboarding) {
+        setTimeout(() => router.replace('/(onboarding)/welcome'), 0);
+      } else {
+        setTimeout(() => router.replace('/(tabs)'), 0);
+      }
+    } else if (user && !hasCompletedOnboarding && !inOnboardingGroup && !inAuthGroup) {
+      // User logged in but hasn't completed onboarding
+      setHasNavigated(true);
+      setTimeout(() => router.replace('/(onboarding)/welcome'), 0);
     }
-  }, [user, segments, isInitialized]);
+  }, [user, segments, isInitialized, hasCompletedOnboarding]);
 
   return hasNavigated;
 }
@@ -181,6 +194,7 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
             name="dream/[id]"
