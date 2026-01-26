@@ -1,20 +1,45 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { File } from 'expo-file-system';
+import { supabase } from './supabase';
 import { DREAM_ANALYSIS_PROMPT, CHAT_SYSTEM_PROMPT, WEEKLY_REPORT_PROMPT } from '@/constants/prompts';
 import type { GeminiDreamResponse, ChatMessage, Dream, JungianArchetype } from '@/types/dream';
 
-const genAI = new GoogleGenerativeAI(process.env.EXPO_PUBLIC_GEMINI_API_KEY!);
+// ============================================================================
+// SECURE API CALLS - All Gemini calls go through Supabase Edge Functions
+// This keeps the API key server-side and enables rate limiting
+// ============================================================================
 
-// Use Gemini 2.5 Flash for quick audio analysis
-const flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+async function callEdgeFunction<T>(
+  functionName: string,
+  body: Record<string, unknown>
+): Promise<T> {
+  if (!supabase) {
+    throw new Error('Supabase not configured');
+  }
 
-// Use Gemini 2.5 Pro for deep analysis (supports thinking mode)
-const proModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+  const { data, error } = await supabase.functions.invoke(functionName, {
+    body,
+  });
 
-export { proModel };
+  if (error) {
+    throw new Error(error.message || `Edge function ${functionName} failed`);
+  }
 
-export async function analyzeDreamAudio(audioUri: string, userContext?: string | null): Promise<GeminiDreamResponse> {
-  // Read audio file as base64 using new File API
+  return data as T;
+}
+
+// Sanitize input to prevent injection and limit size
+function sanitizeInput(text: string, maxLength = 10000): string {
+  return text
+    .slice(0, maxLength)
+    .replace(/[<>]/g, '') // Remove potential HTML
+    .trim();
+}
+
+export async function analyzeDreamAudio(
+  audioUri: string,
+  userContext?: string | null
+): Promise<GeminiDreamResponse> {
+  // Read audio file as base64
   const file = new File(audioUri);
   const audioBase64 = await file.base64();
 
@@ -24,44 +49,21 @@ export async function analyzeDreamAudio(audioUri: string, userContext?: string |
   // Build prompt with optional user context
   let prompt = DREAM_ANALYSIS_PROMPT;
   if (userContext && userContext.trim()) {
+    const sanitizedContext = sanitizeInput(userContext, 2000);
     prompt = `CONTEXT ABOUT THE DREAMER (use this to better understand their dreams):
-${userContext}
+${sanitizedContext}
 
 ---
 
 ${DREAM_ANALYSIS_PROMPT}`;
   }
 
-  const result = await flashModel.generateContent([
-    {
-      inlineData: {
-        mimeType,
-        data: audioBase64,
-      },
-    },
-    { text: prompt },
-  ]);
-
-  const response = result.response;
-  const text = response.text();
-
-  // Parse JSON response - handle potential markdown code blocks
-  let jsonStr = text.trim();
-  if (jsonStr.startsWith('```json')) {
-    jsonStr = jsonStr.slice(7);
-  } else if (jsonStr.startsWith('```')) {
-    jsonStr = jsonStr.slice(3);
-  }
-  if (jsonStr.endsWith('```')) {
-    jsonStr = jsonStr.slice(0, -3);
-  }
-  jsonStr = jsonStr.trim();
-
-  try {
-    return JSON.parse(jsonStr) as GeminiDreamResponse;
-  } catch (error) {
-    throw new Error('Failed to parse dream analysis response');
-  }
+  return callEdgeFunction<GeminiDreamResponse>('analyze-dream', {
+    audioBase64,
+    mimeType,
+    userContext: userContext ? sanitizeInput(userContext, 2000) : null,
+    prompt,
+  });
 }
 
 export async function transcribeAudio(audioUri: string): Promise<string> {
@@ -71,17 +73,13 @@ export async function transcribeAudio(audioUri: string): Promise<string> {
 
   const mimeType = audioUri.endsWith('.m4a') ? 'audio/mp4' : 'audio/mpeg';
 
-  const result = await flashModel.generateContent([
-    {
-      inlineData: {
-        mimeType,
-        data: audioBase64,
-      },
-    },
-    { text: 'Transcribe this audio exactly. Return only the transcription text, nothing else.' },
-  ]);
+  const result = await callEdgeFunction<{ response: string }>('analyze-dream', {
+    audioBase64,
+    mimeType,
+    prompt: 'Transcribe this audio exactly. Return only the transcription text, nothing else.',
+  });
 
-  return result.response.text().trim();
+  return result.response || (result as unknown as string);
 }
 
 export async function chatAboutDreams(
@@ -168,7 +166,7 @@ ${quickArchetypeSection}${deepAnalysisSection}`;
 
   // Build conversation history
   const conversationHistory = messages.map(m =>
-    `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+    `${m.role === 'user' ? 'User' : 'Assistant'}: ${sanitizeInput(m.content, 5000)}`
   ).join('\n\n');
 
   // Build prompt with optional user context
@@ -177,7 +175,7 @@ ${quickArchetypeSection}${deepAnalysisSection}`;
 ═══════════════════════════════════════
 PERSONAL CONTEXT ABOUT THE DREAMER
 ═══════════════════════════════════════
-${userContext}
+${sanitizeInput(userContext, 2000)}
 
 `
     : '';
@@ -193,8 +191,8 @@ ${conversationHistory}
 
 Respond to the user's last message. Provide substantive Jungian analysis when asked about meaning. Reference specific dream elements (figures, symbols, emotions, archetypes) in your interpretation. Be insightful and give real value.`;
 
-  const result = await flashModel.generateContent(prompt);
-  return result.response.text();
+  const result = await callEdgeFunction<{ response: string }>('chat', { prompt });
+  return result.response;
 }
 
 // Weekly Report Types
@@ -233,23 +231,20 @@ Overall Tone: ${dream.overall_emotional_tone}
 Dreams from this week (${dreams.length} total):
 ${dreamsContext}`;
 
-  const result = await flashModel.generateContent(prompt);
-  const text = result.response.text();
-
-  // Parse JSON response
-  let jsonStr = text.trim();
-  if (jsonStr.startsWith('```json')) {
-    jsonStr = jsonStr.slice(7);
-  } else if (jsonStr.startsWith('```')) {
-    jsonStr = jsonStr.slice(3);
-  }
-  if (jsonStr.endsWith('```')) {
-    jsonStr = jsonStr.slice(0, -3);
-  }
-  jsonStr = jsonStr.trim();
-
   try {
-    return JSON.parse(jsonStr) as WeeklyReportAIResponse;
+    const result = await callEdgeFunction<WeeklyReportAIResponse>('chat', { prompt });
+    
+    // If result is a string response, try to parse it
+    if (typeof result === 'object' && 'response' in result) {
+      const text = (result as { response: string }).response;
+      let jsonStr = text.trim();
+      if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
+      else if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
+      if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
+      return JSON.parse(jsonStr.trim());
+    }
+    
+    return result;
   } catch (error) {
     // Return fallback response
     return {

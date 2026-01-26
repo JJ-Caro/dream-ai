@@ -1,11 +1,18 @@
-import { proModel } from '@/lib/gemini';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { DEEP_JUNGIAN_ANALYSIS_PROMPT } from '@/constants/prompts';
-import { logError, logWarning } from '@/lib/errorLogger';
+import { logError } from '@/lib/errorLogger';
 import type { DeepAnalysis, Dream } from '@/types/dream';
 
+// Sanitize input to prevent injection and limit size
+function sanitizeInput(text: string, maxLength = 10000): string {
+  return text
+    .slice(0, maxLength)
+    .replace(/[<>]/g, '')
+    .trim();
+}
+
 /**
- * Generate deep Jungian analysis for a dream using Gemini 3 Pro with Deep Think.
+ * Generate deep Jungian analysis for a dream using Gemini Pro via Edge Function.
  * This runs in the background after the initial dream save.
  */
 export async function generateDeepAnalysis(
@@ -17,68 +24,54 @@ export async function generateDeepAnalysis(
   emotions: Dream['emotions'],
   userContext?: string | null
 ): Promise<DeepAnalysis | null> {
+  if (!supabase) {
+    logError('generateDeepAnalysis', new Error('Supabase not configured'));
+    return null;
+  }
+
   try {
     // Build the dream context for analysis
     const dreamContext = buildDreamContext(dreamNarrative, symbols, themes, figures, emotions);
 
     // Build prompt with user context if available
-    let prompt = DEEP_JUNGIAN_ANALYSIS_PROMPT;
+    let prompt: string;
 
     if (userContext && userContext.trim()) {
       prompt = `PERSONAL CONTEXT ABOUT THE DREAMER (use this for personal associations):
-${userContext}
+${sanitizeInput(userContext, 2000)}
 
 ---
 
 DREAM TO ANALYZE:
-${dreamContext}
+${sanitizeInput(dreamContext, 8000)}
 
 ---
 
 ${DEEP_JUNGIAN_ANALYSIS_PROMPT}`;
     } else {
       prompt = `DREAM TO ANALYZE:
-${dreamContext}
+${sanitizeInput(dreamContext, 8000)}
 
 ---
 
 ${DEEP_JUNGIAN_ANALYSIS_PROMPT}`;
     }
 
-    // Call Gemini 3 Pro with Deep Think enabled
-    const result = await proModel.generateContent(prompt);
-    const text = result.response.text();
-
-    // Parse JSON response
-    let jsonStr = text.trim();
-    if (jsonStr.startsWith('```json')) {
-      jsonStr = jsonStr.slice(7);
-    } else if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.slice(3);
-    }
-    if (jsonStr.endsWith('```')) {
-      jsonStr = jsonStr.slice(0, -3);
-    }
-    jsonStr = jsonStr.trim();
-
-    const deepAnalysis = JSON.parse(jsonStr) as DeepAnalysis;
-
-    // Add timestamp
-    deepAnalysis.generated_at = new Date().toISOString();
-
-    // Save to database
-    if (!supabase) return null;
-    const { error } = await supabase
-      .from('dreams')
-      .update({ deep_analysis: deepAnalysis })
-      .eq('id', dreamId);
+    // Call Edge Function instead of direct Gemini API
+    const { data, error } = await supabase.functions.invoke('deep-analysis', {
+      body: {
+        dreamId,
+        prompt,
+      },
+    });
 
     if (error) {
       logError('generateDeepAnalysis', error);
       return null;
     }
 
-    return deepAnalysis;
+    // Edge function already saves to database, just return the result
+    return data as DeepAnalysis;
 
   } catch (error) {
     logError('generateDeepAnalysis', error);
