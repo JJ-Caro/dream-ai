@@ -125,7 +125,7 @@ export default function PersonalizeScreen() {
     if (step === 'goal' && selectedGoal) {
       setStep('frequency');
     } else if (step === 'frequency' && selectedFrequency) {
-      router.push('/(onboarding)/paywall');
+      router.push('/(onboarding)/social-proof');
     }
   };
 

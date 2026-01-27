@@ -82,7 +82,7 @@ export default function WelcomeScreen() {
 
   const handleContinue = () => {
     haptic.medium();
-    router.push('/(onboarding)/features');
+    router.push('/(onboarding)/problem');
   };
 
   return (
