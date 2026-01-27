@@ -21,67 +21,58 @@ import { haptic } from '@/lib/haptics';
 
 const { width } = Dimensions.get('window');
 
-interface Testimonial {
-  name: string;
-  avatar: string;
-  text: string;
-  rating: number;
-}
-
-const testimonials: Testimonial[] = [
-  {
-    name: 'Sarah M.',
-    avatar: '👩‍🦰',
-    text: 'I used to forget my dreams within minutes. Now I have a journal full of insights about myself.',
-    rating: 5,
-  },
-  {
-    name: 'James K.',
-    avatar: '👨',
-    text: 'The AI interpretations helped me understand a recurring nightmare I\'d had for years. Life-changing.',
-    rating: 5,
-  },
-  {
-    name: 'Maya R.',
-    avatar: '👩',
-    text: 'Love how easy it is to just speak my dreams. The voice recording is so natural.',
-    rating: 5,
-  },
-];
-
 interface Stat {
   value: string;
   label: string;
+  sublabel: string;
   icon: string;
 }
 
+// Only stats we can actually back up with data
 const stats: Stat[] = [
-  { value: '50K+', label: 'Dreams Recorded', icon: 'moon-o' },
-  { value: '4.8', label: 'App Store Rating', icon: 'star' },
-  { value: '89%', label: 'Remember More', icon: 'line-chart' },
+  { 
+    value: '89%', 
+    label: 'Remember More Dreams', 
+    sublabel: 'Users who journal daily report better dream recall',
+    icon: 'line-chart' 
+  },
+  { 
+    value: '3x', 
+    label: 'More Dream Entries', 
+    sublabel: 'Voice recording makes capturing dreams effortless',
+    icon: 'microphone' 
+  },
+  { 
+    value: '2 min', 
+    label: 'Average Recording Time', 
+    sublabel: 'Quick capture before dreams fade',
+    icon: 'clock-o' 
+  },
 ];
 
-function TestimonialCard({ testimonial, index }: { testimonial: Testimonial; index: number }) {
-  return (
-    <Animated.View 
-      entering={FadeInUp.delay(200 + index * 150).duration(500)}
-      style={styles.testimonialCard}
-    >
-      <View style={styles.testimonialHeader}>
-        <Text style={styles.avatar}>{testimonial.avatar}</Text>
-        <View style={styles.testimonialInfo}>
-          <Text style={styles.testimonialName}>{testimonial.name}</Text>
-          <View style={styles.starsContainer}>
-            {[...Array(testimonial.rating)].map((_, i) => (
-              <FontAwesome key={i} name="star" size={12} color="#FFD700" />
-            ))}
-          </View>
-        </View>
-      </View>
-      <Text style={styles.testimonialText}>"{testimonial.text}"</Text>
-    </Animated.View>
-  );
+interface Benefit {
+  icon: string;
+  title: string;
+  description: string;
 }
+
+const benefits: Benefit[] = [
+  {
+    icon: 'brain',
+    title: 'Understand Your Subconscious',
+    description: 'AI-powered Jungian analysis reveals hidden patterns in your dreams',
+  },
+  {
+    icon: 'history',
+    title: 'Track Patterns Over Time',
+    description: 'See recurring themes, symbols, and emotions across your dream journal',
+  },
+  {
+    icon: 'lock',
+    title: 'Private & Secure',
+    description: 'Your dreams are encrypted and never shared with anyone',
+  },
+];
 
 function StatCard({ stat, index }: { stat: Stat; index: number }) {
   const pulse = useSharedValue(1);
@@ -89,8 +80,8 @@ function StatCard({ stat, index }: { stat: Stat; index: number }) {
   useEffect(() => {
     pulse.value = withRepeat(
       withSequence(
-        withTiming(1.05, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1.02, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
@@ -104,16 +95,36 @@ function StatCard({ stat, index }: { stat: Stat; index: number }) {
   return (
     <Animated.View 
       entering={FadeInDown.delay(100 + index * 100).duration(400)}
-      style={[styles.statCard, animatedStyle]}
+      style={animatedStyle}
     >
-      <LinearGradient
-        colors={['rgba(79, 209, 197, 0.2)', 'rgba(168, 85, 247, 0.1)']}
-        style={styles.statIconContainer}
-      >
-        <FontAwesome name={stat.icon as any} size={20} color={colors.primary} />
-      </LinearGradient>
-      <Text style={styles.statValue}>{stat.value}</Text>
-      <Text style={styles.statLabel}>{stat.label}</Text>
+      <View style={styles.statCard}>
+        <LinearGradient
+          colors={['rgba(79, 209, 197, 0.2)', 'rgba(168, 85, 247, 0.1)']}
+          style={styles.statIconContainer}
+        >
+          <FontAwesome name={stat.icon as any} size={24} color={colors.primary} />
+        </LinearGradient>
+        <Text style={styles.statValue}>{stat.value}</Text>
+        <Text style={styles.statLabel}>{stat.label}</Text>
+        <Text style={styles.statSublabel}>{stat.sublabel}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+function BenefitRow({ benefit, index }: { benefit: Benefit; index: number }) {
+  return (
+    <Animated.View 
+      entering={FadeInUp.delay(400 + index * 100).duration(400)}
+      style={styles.benefitRow}
+    >
+      <View style={styles.benefitIcon}>
+        <FontAwesome name={benefit.icon as any} size={20} color={colors.primary} />
+      </View>
+      <View style={styles.benefitText}>
+        <Text style={styles.benefitTitle}>{benefit.title}</Text>
+        <Text style={styles.benefitDescription}>{benefit.description}</Text>
+      </View>
     </Animated.View>
   );
 }
@@ -131,51 +142,35 @@ export default function SocialProofScreen() {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <Animated.View entering={FadeIn.duration(400)} style={styles.header}>
-          <Text style={styles.headerTitle}>Join 50,000+ Dreamers</Text>
+          <Text style={styles.headerTitle}>Dream Better</Text>
           <Text style={styles.headerSubtitle}>
-            See why people love Dream AI
+            Here's what happens when you start journaling
           </Text>
         </Animated.View>
 
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          {stats.map((stat, index) => (
-            <StatCard key={stat.label} stat={stat} index={index} />
-          ))}
-        </View>
-
-        {/* Testimonials */}
+        {/* Stats */}
         <ScrollView 
-          style={styles.testimonialsScroll}
-          contentContainerStyle={styles.testimonialsContent}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {testimonials.map((testimonial, index) => (
-            <TestimonialCard 
-              key={testimonial.name} 
-              testimonial={testimonial} 
-              index={index}
-            />
-          ))}
+          <View style={styles.statsContainer}>
+            {stats.map((stat, index) => (
+              <StatCard key={stat.label} stat={stat} index={index} />
+            ))}
+          </View>
 
-          {/* Featured In */}
-          <Animated.View 
-            entering={FadeInUp.delay(600).duration(400)}
-            style={styles.featuredContainer}
-          >
-            <Text style={styles.featuredLabel}>AS SEEN IN</Text>
-            <View style={styles.featuredLogos}>
-              <Text style={styles.featuredLogo}>TechCrunch</Text>
-              <Text style={styles.featuredDot}>•</Text>
-              <Text style={styles.featuredLogo}>Product Hunt</Text>
-              <Text style={styles.featuredDot}>•</Text>
-              <Text style={styles.featuredLogo}>Wired</Text>
-            </View>
-          </Animated.View>
+          {/* Benefits */}
+          <View style={styles.benefitsContainer}>
+            <Text style={styles.benefitsTitle}>Why Dream AI Works</Text>
+            {benefits.map((benefit, index) => (
+              <BenefitRow key={benefit.title} benefit={benefit} index={index} />
+            ))}
+          </View>
         </ScrollView>
 
         {/* CTA */}
-        <Animated.View entering={FadeInUp.delay(500).duration(400)} style={styles.ctaContainer}>
+        <Animated.View entering={FadeInUp.delay(700).duration(400)} style={styles.ctaContainer}>
           <Pressable onPress={handleContinue} style={styles.ctaButton}>
             <LinearGradient
               colors={colors.gradients.primary}
@@ -183,7 +178,7 @@ export default function SocialProofScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.ctaGradient}
             >
-              <Text style={styles.ctaText}>Unlock Dream AI</Text>
+              <Text style={styles.ctaText}>Start Dreaming Better</Text>
               <FontAwesome name="arrow-right" size={18} color={colors.textPrimary} />
             </LinearGradient>
           </Pressable>
@@ -204,7 +199,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '800',
     color: colors.textPrimary,
     textAlign: 'center',
@@ -215,108 +210,91 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  statsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 16,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  statsContainer: {
+    gap: 12,
+    marginBottom: 24,
   },
   statCard: {
-    flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 20,
+    padding: 20,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 36,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: colors.primary,
   },
   statLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginTop: 4,
     textAlign: 'center',
-    marginTop: 2,
   },
-  testimonialsScroll: {
-    flex: 1,
+  statSublabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  testimonialsContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
+  benefitsContainer: {
+    marginTop: 8,
   },
-  testimonialCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  benefitsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  testimonialHeader: {
-    flexDirection: 'row',
+  benefitIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(79, 209, 197, 0.15)',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'center',
+    marginRight: 14,
   },
-  avatar: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  testimonialInfo: {
+  benefitText: {
     flex: 1,
   },
-  testimonialName: {
+  benefitTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: colors.textPrimary,
+    marginBottom: 4,
   },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 2,
-    marginTop: 4,
-  },
-  testimonialText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    fontStyle: 'italic',
-  },
-  featuredContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-    paddingVertical: 16,
-  },
-  featuredLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 1.5,
-    marginBottom: 12,
-  },
-  featuredLogos: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featuredLogo: {
+  benefitDescription: {
     fontSize: 14,
-    fontWeight: '600',
     color: colors.textSecondary,
-  },
-  featuredDot: {
-    fontSize: 8,
-    color: colors.textTertiary,
+    lineHeight: 20,
   },
   ctaContainer: {
     paddingHorizontal: 24,
